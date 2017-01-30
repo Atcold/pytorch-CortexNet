@@ -64,20 +64,47 @@ def main():
 
     # defines batch_size, channels, height, width
     b, c, h, w = 1, 3, 4, 8
+    d = 5           # defines hidden state size
+    lr = 1e-1       # defines learning rate
+    T = 6           # define sequence length
+    max_epoch = 20  # number of epochs
 
-    print('Instatiate model')
-    model = ConvLSTMCell(3, 5)
+    # set manual seed
+    torch.manual_seed(0)
 
-    print('Create input Variable')
-    x = Variable(torch.rand(b, c, h, w))
+    print('Instantiate model')
+    model = ConvLSTMCell(c, d)
 
-    print('Cycle through 5 times')
-    state = None
-    for t in range(0, 5):
-        state = model(x, state)
+    print('Create input and target Variables')
+    x = Variable(torch.rand(T, b, c, h, w))
+    y = Variable(torch.randn(T, b, d, h, w))
 
-    print('Display final hidden state')
-    print(state[0].data)
+    print('Create a MSE criterion')
+    loss_fn = nn.MSELoss()
+
+    print('Run for', max_epoch, 'iterations')
+    for epoch in range(0, max_epoch):
+        state = None
+        loss = 0
+        for t in range(0, T):
+            state = model(x[t], state)
+            loss += loss_fn(state[0], y[t])
+
+        print('Epoch {:2d} loss: {:.3f}'.format((epoch+1), loss.data[0]))
+
+        # print('Zero grad parameters')
+        model.zero_grad()
+
+        # print('Compute new grad parameters')
+        loss.backward()
+
+        # print('Step against the gradient')
+        for p in model.parameters():
+            p.data.sub_(p.grad.data * lr)
+
+    print('Input size:', list(x.data.size()))
+    print('Target size:', list(y.data.size()))
+    print('Last hidden state size:', list(state[0].size()))
 
 
 if __name__ == '__main__':
