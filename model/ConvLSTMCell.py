@@ -40,7 +40,7 @@ class ConvLSTMCell(nn.Module):
         stacked_inputs = torch.cat((input, prev_hidden), 1)
         gates = self.Gates(stacked_inputs)
 
-        # chunks across channel dimension
+        # chunk across channel dimension
         in_gate, remember_gate, out_gate, cell_gate = gates.chunk(4, 1)
 
         # apply sigmoid non linearity
@@ -51,6 +51,7 @@ class ConvLSTMCell(nn.Module):
         # apply tanh non linearity
         cell_gate = F.tanh(cell_gate)
 
+        # compute current cell and hidden state
         cell = (remember_gate * prev_cell) + (in_gate * cell_gate)
         hidden = out_gate * F.tanh(cell)
 
@@ -62,11 +63,11 @@ def main():
     Run some basic tests on the API
     """
 
-    # defines batch_size, channels, height, width
+    # define batch_size, channels, height, width
     b, c, h, w = 1, 3, 4, 8
-    d = 5           # defines hidden state size
-    lr = 1e-1       # defines learning rate
-    T = 6           # define sequence length
+    d = 5           # hidden state size
+    lr = 1e-1       # learning rate
+    T = 6           # sequence length
     max_epoch = 20  # number of epochs
 
     # set manual seed
@@ -74,6 +75,7 @@ def main():
 
     print('Instantiate model')
     model = ConvLSTMCell(c, d)
+    print(repr(model))
 
     print('Create input and target Variables')
     x = Variable(torch.rand(T, b, c, h, w))
@@ -90,15 +92,15 @@ def main():
             state = model(x[t], state)
             loss += loss_fn(state[0], y[t])
 
-        print('Epoch {:2d} loss: {:.3f}'.format((epoch+1), loss.data[0]))
+        print(' > Epoch {:2d} loss: {:.3f}'.format((epoch+1), loss.data[0]))
 
-        # print('Zero grad parameters')
+        # zero grad parameters
         model.zero_grad()
 
-        # print('Compute new grad parameters')
+        # compute new grad parameters through time!
         loss.backward()
 
-        # print('Step against the gradient')
+        # learning_rate step against the gradient
         for p in model.parameters():
             p.data.sub_(p.grad.data * lr)
 
