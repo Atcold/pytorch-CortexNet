@@ -17,7 +17,7 @@ class DiscriminativeCell(nn.Module):
 
     def __init__(self, input_size, hidden_size, first=False):
         super().__init__()
-        self.intput_size = input_size
+        self.input_size = input_size
         self.hidden_size = hidden_size
         self.first = first
         if not first:
@@ -31,21 +31,44 @@ class DiscriminativeCell(nn.Module):
         return error
 
 
-def main():
-    print('Define model')
+def test_layer1():
+    print('Define model for layer 1')
     discriminator = DiscriminativeCell(input_size={'bottom': 3, 'top': 3}, hidden_size=3, first=True)
 
-    print('Define some inputs')
-    input_image = Variable(torch.Tensor(1, 3, 8, 12))
-    system_state = Variable(torch.Tensor(1, 3, 8, 12))
+    print('Define input and state')
+    # at the first layer we have that system_state match the input_image dimensionality
+    input_image = Variable(torch.rand(1, 3, 8, 12))
+    system_state = Variable(torch.randn(1, 3, 8, 12))
 
-    print('Forward inputs to the model')
+    print('Input has size', list(input_image.data.size()))
+
+    print('Forward input and state to the model')
     e = discriminator(input_image, system_state)
 
     # print output size
-    print('The error has size', list(e.data.size()))
+    print('Layer 1 error has size', list(e.data.size()))
 
+    return e
+
+
+def test_layer2(input_error):
+    print('Define model for layer 2')
+    discriminator = DiscriminativeCell(input_size={'bottom': 6, 'top': 32}, hidden_size=32, first=False)
+
+    print('Define a new, smaller state')
+    system_state = Variable(torch.randn(1, 32, 4, 6))
+
+    print('Forward layer 1 output and state to the model')
+    e = discriminator(input_error, system_state)
+
+    # print output size
+    print('Layer 2 error has size', list(e.data.size()))
+
+
+def test_layers():
+    error = test_layer1()
+    test_layer2(input_error=error)
 
 
 if __name__ == '__main__':
-    main()
+    test_layers()
