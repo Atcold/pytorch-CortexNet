@@ -21,8 +21,8 @@ class DiscriminativeCell(nn.Module):
         self.hidden_size = hidden_size
         self.first = first
         if not first:
-            self.from_bottom = nn.Conv2d(input_size['bottom'], hidden_size, KERNEL_SIZE, padding=PADDING)
-        self.from_state = nn.Conv2d(input_size['top'], hidden_size, KERNEL_SIZE, padding=PADDING)
+            self.from_bottom = nn.Conv2d(input_size['input'], hidden_size, KERNEL_SIZE, padding=PADDING)
+        self.from_state = nn.Conv2d(input_size['state'], hidden_size, KERNEL_SIZE, padding=PADDING)
 
     def forward(self, bottom_up, state):
         input_projection = self.first and bottom_up or F.relu(F.max_pool2d(self.from_bottom(bottom_up), POOL, POOL))
@@ -33,7 +33,7 @@ class DiscriminativeCell(nn.Module):
 
 def test_layer1():
     print('Define model for layer 1')
-    discriminator = DiscriminativeCell(input_size={'bottom': 3, 'top': 3}, hidden_size=3, first=True)
+    discriminator = DiscriminativeCell(input_size={'input': 3, 'state': 3}, hidden_size=3, first=True)
 
     print('Define input and state')
     # at the first layer we have that system_state match the input_image dimensionality
@@ -53,7 +53,7 @@ def test_layer1():
 
 def test_layer2(input_error):
     print('Define model for layer 2')
-    discriminator = DiscriminativeCell(input_size={'bottom': 6, 'top': 32}, hidden_size=32, first=False)
+    discriminator = DiscriminativeCell(input_size={'input': 6, 'state': 32}, hidden_size=32, first=False)
 
     print('Define a new, smaller state')
     system_state = Variable(torch.randn(1, 32, 4, 6))
