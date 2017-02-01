@@ -16,6 +16,13 @@ class DiscriminativeCell(nn.Module):
     """
 
     def __init__(self, input_size, hidden_size, first=False):
+        """
+        Create a discriminative cell (bottom_up, r_state) -> error
+
+        :param input_size: {'input': bottom_up_size, 'state': r_state_size}
+        :param hidden_size: int, shooting dimensionality
+        :param first: True/False
+        """
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
