@@ -38,7 +38,7 @@ class DiscriminativeCell(nn.Module):
         return error
 
 
-def test_layer1():
+def _test_layer1():
     print('Define model for layer 1')
     discriminator = DiscriminativeCell(input_size={'input': 3, 'state': 3}, hidden_size=3, first=True)
 
@@ -58,7 +58,7 @@ def test_layer1():
     return e
 
 
-def test_layer2(input_error):
+def _test_layer2(input_error):
     print('Define model for layer 2')
     discriminator = DiscriminativeCell(input_size={'input': 6, 'state': 32}, hidden_size=32, first=False)
 
@@ -72,10 +72,10 @@ def test_layer2(input_error):
     print('Layer 2 error has size', list(e.data.size()))
 
 
-def test_layers():
-    error = test_layer1()
-    test_layer2(input_error=error)
+def _test_layers():
+    error = _test_layer1()
+    _test_layer2(input_error=error)
 
 
 if __name__ == '__main__':
-    test_layers()
+    _test_layers()

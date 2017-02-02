@@ -34,7 +34,7 @@ class GenerativeCell(nn.Module):
         return self.memory(model_input, state)
 
 
-def test_layer2():
+def _test_layer2():
     print('Define model for layer 2')
     generator = GenerativeCell(input_size={'error': 2*16, 'up_state': 0}, hidden_size=16)
 
@@ -55,7 +55,7 @@ def test_layer2():
     return state[0]  # the element 1 is the cell state
 
 
-def test_layer1(topdown_state):
+def _test_layer1(topdown_state):
     print('Define model for layer 1')
     generator = GenerativeCell(input_size={'error': 2*3, 'up_state': 16}, hidden_size=3)
 
@@ -73,10 +73,10 @@ def test_layer1(topdown_state):
     print('Layer 1 state has size', list(state[0].data.size()))
 
 
-def test_layers():
-    state = test_layer2()
-    test_layer1(topdown_state=state)
+def _test_layers():
+    state = _test_layer2()
+    _test_layer1(topdown_state=state)
 
 
 if __name__ == '__main__':
-    test_layers()
+    _test_layers()

@@ -58,7 +58,7 @@ class ConvLSTMCell(nn.Module):
         return hidden, cell
 
 
-def main():
+def _main():
     """
     Run some basic tests on the API
     """
@@ -110,4 +110,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    _main()

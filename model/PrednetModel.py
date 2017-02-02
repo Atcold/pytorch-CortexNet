@@ -53,7 +53,7 @@ class PrednetModel(nn.Module):
         return error, state
 
 
-class BuildOneLayerModel(nn.Module):
+class _BuildOneLayerModel(nn.Module):
     """
     Build a one layer Prednet model
     """
@@ -77,7 +77,7 @@ class BuildOneLayerModel(nn.Module):
         return error, state
 
 
-class BuildTwoLayerModel(nn.Module):
+class _BuildTwoLayerModel(nn.Module):
     """
     Build a two layer Prednet model
     """
@@ -112,7 +112,7 @@ class BuildTwoLayerModel(nn.Module):
         return error, state
 
 
-def test_one_layer_model():
+def _test_one_layer_model():
     print('\nCreate the input image')
     input_image = Variable(torch.rand(1, 3, 8, 12))
 
@@ -122,7 +122,7 @@ def test_one_layer_model():
     print('The error initialisation size is', error_init_size)
 
     print('Define a 1 layer Prednet')
-    model = BuildOneLayerModel((error_init_size, ))
+    model = _BuildOneLayerModel((error_init_size,))
 
     print('Forward input and state to the model')
     state = None
@@ -133,7 +133,7 @@ def test_one_layer_model():
     print('The state has size', list(state[0].data.size()))
 
 
-def test_two_layer_model():
+def _test_two_layer_model():
     print('\nCreate the input image')
     input_image = Variable(torch.rand(1, 3, 8, 12))
 
@@ -143,7 +143,7 @@ def test_two_layer_model():
     print('The error initialisation sizes are', *error_init_size_list)
 
     print('Define a 2 layer Prednet')
-    model = BuildTwoLayerModel(error_init_size_list)
+    model = _BuildTwoLayerModel(error_init_size_list)
 
     print('Forward input and state to the model')
     state = [None] * 2
@@ -155,7 +155,7 @@ def test_two_layer_model():
         print('Layer', layer + 1, 'state has size', list(state[layer][0].data.size()))
 
 
-def test_L_layer_model():
+def _test_L_layer_model():
 
     max_number_of_layers = 5
     for L in range(0, max_number_of_layers):
@@ -184,7 +184,7 @@ def test_L_layer_model():
             print('Layer', layer + 1, 'state has size', list(state[layer][0].data.size()))
 
 
-def test_training():
+def _test_training():
     number_of_layers = 3
     T = 6  # sequence length
     max_epoch = 10  # number of epochs
@@ -232,12 +232,12 @@ def test_training():
         for p in model.parameters():
             p.data.sub_(p.grad.data * lr)
 
-def main():
-    test_one_layer_model()
-    test_two_layer_model()
-    test_L_layer_model()
-    test_training()
+def _main():
+    _test_one_layer_model()
+    _test_two_layer_model()
+    _test_L_layer_model()
+    _test_training()
 
 
 if __name__ == '__main__':
-    main()
+    _main()
