@@ -7,9 +7,50 @@ from model.GenerativeCell import GenerativeCell
 
 
 # Define some constants
-OUT_LAYER_SIZE = (3,) + tuple(2 ** p for p in range(4, 7))
+OUT_LAYER_SIZE = (3,) + tuple(2 ** p for p in range(4, 10))
 ERR_LAYER_SIZE = tuple(size * 2 for size in OUT_LAYER_SIZE)
 IN_LAYER_SIZE = (3,) + ERR_LAYER_SIZE
+
+
+class PrednetModel(nn.Module):
+    """
+    Build the Prednet model
+    """
+
+    def __init__(self, error_size_list):
+        super().__init__()
+        self.number_of_layers = len(error_size_list)
+        for layer in range(0, self.number_of_layers):
+            setattr(self, 'discriminator_' + str(layer + 1), DiscriminativeCell(
+                input_size={'input': IN_LAYER_SIZE[layer], 'state': OUT_LAYER_SIZE[layer]},
+                hidden_size=OUT_LAYER_SIZE[layer],
+                first=(not layer)
+            ))
+            setattr(self, 'generator_' + str(layer + 1), GenerativeCell(
+                input_size={'error': ERR_LAYER_SIZE[layer], 'up_state':
+                    OUT_LAYER_SIZE[layer + 1] if layer != self.number_of_layers - 1 else 0},
+                hidden_size=OUT_LAYER_SIZE[layer],
+                error_init_size=error_size_list[layer]
+            ))
+
+    def forward(self, bottom_up_input, error, state):
+
+        # generative branch
+        up_state = None
+        for layer in reversed(range(0, self.number_of_layers)):
+            state[layer] = getattr(self, 'generator_' + str(layer + 1))(
+                error[layer], up_state, state[layer]
+            )
+            up_state = state[layer][0]
+
+        # discriminative branch
+        for layer in range(0, self.number_of_layers):
+            error[layer] = getattr(self, 'discriminator_' + str(layer + 1))(
+                layer and error[layer - 1] or bottom_up_input,
+                state[layer][0]
+            )
+
+        return error, state
 
 
 class BuildOneLayerModel(nn.Module):
@@ -72,7 +113,7 @@ class BuildTwoLayerModel(nn.Module):
 
 
 def test_one_layer_model():
-    print('Create the input image')
+    print('\nCreate the input image')
     input_image = Variable(torch.rand(1, 3, 8, 12))
 
     print('Input has size', list(input_image.data.size()))
@@ -81,7 +122,7 @@ def test_one_layer_model():
     print('The error initialisation size is', error_init_size)
 
     print('Define a 1 layer Prednet')
-    model = BuildOneLayerModel([error_init_size])
+    model = BuildOneLayerModel((error_init_size, ))
 
     print('Forward input and state to the model')
     state = None
@@ -93,12 +134,12 @@ def test_one_layer_model():
 
 
 def test_two_layer_model():
-    print('Create the input image')
+    print('\nCreate the input image')
     input_image = Variable(torch.rand(1, 3, 8, 12))
 
     print('Input has size', list(input_image.data.size()))
 
-    error_init_size_list = [(1, 6, 8, 12), (1, 32, 4, 6)]
+    error_init_size_list = ((1, 6, 8, 12), (1, 32, 4, 6))
     print('The error initialisation sizes are', *error_init_size_list)
 
     print('Define a 2 layer Prednet')
@@ -114,9 +155,39 @@ def test_two_layer_model():
         print('Layer', layer + 1, 'state has size', list(state[layer][0].data.size()))
 
 
+def test_L_layer_model():
+
+    max_number_of_layers = 5
+    for L in range(0, max_number_of_layers):
+        print('\n---------- Test', str(L + 1), 'layer network ----------')
+
+        print('Create the input image')
+        input_image = Variable(torch.rand(1, 3, 4 * 2 ** L, 6 * 2 ** L))
+
+        print('Input has size', list(input_image.data.size()))
+
+        error_init_size_list = tuple(
+            (1, ERR_LAYER_SIZE[l], 4 * 2 ** (L-l), 6 * 2 ** (L-l)) for l in range(0, L + 1)
+        )
+        print('The error initialisation sizes are', *error_init_size_list)
+
+        print('Define a', str(L + 1), 'layer Prednet')
+        model = PrednetModel(error_init_size_list)
+
+        print('Forward input and state to the model')
+        state = [None] * (L + 1)
+        error = [None] * (L + 1)
+        error, state = model(input_image, error=error, state=state)
+
+        for layer in range(0, L):
+            print('Layer', layer + 1, 'error has size', list(error[layer].data.size()))
+            print('Layer', layer + 1, 'state has size', list(state[layer][0].data.size()))
+
+
 def main():
     test_one_layer_model()
     test_two_layer_model()
+    test_L_layer_model()
 
 
 if __name__ == '__main__':
