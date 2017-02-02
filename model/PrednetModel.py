@@ -1,13 +1,13 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 from torch.autograd import Variable
+
 from model.DiscriminativeCell import DiscriminativeCell
 from model.GenerativeCell import GenerativeCell
 
 
 # Define some constants
-LAYER_SIZE = [3] + list(2**p for p in range(4, 7))
+LAYER_SIZE = [3] + list(2 ** p for p in range(4, 7))
 
 
 class BuildOneLayerModel(nn.Module):
@@ -23,7 +23,7 @@ class BuildOneLayerModel(nn.Module):
             first=True
         )
         self.generator = GenerativeCell(
-            input_size={'error': 2*LAYER_SIZE[0], 'up_state': 0},
+            input_size={'error': 2 * LAYER_SIZE[0], 'up_state': 0},
             hidden_size=LAYER_SIZE[0],
             error_init_size=error_size_list[0]
         )
