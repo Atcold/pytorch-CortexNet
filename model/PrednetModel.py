@@ -184,10 +184,59 @@ def test_L_layer_model():
             print('Layer', layer + 1, 'state has size', list(state[layer][0].data.size()))
 
 
+def test_training():
+    number_of_layers = 3
+    T = 6  # sequence length
+    max_epoch = 10  # number of epochs
+    lr = 1e-1       # learning rate
+
+    # set manual seed
+    torch.manual_seed(0)
+
+    L = number_of_layers - 1
+    print('\n---------- Train a', str(L + 1), 'layer network ----------')
+    print('Create the input image and target sequences')
+    input_sequence = Variable(torch.rand(T, 1, 3, 4 * 2 ** L, 6 * 2 ** L))
+    print('Input has size', list(input_sequence.data.size()))
+
+    error_init_size_list = tuple(
+        (1, ERR_LAYER_SIZE[l], 4 * 2 ** (L - l), 6 * 2 ** (L - l)) for l in range(0, L + 1)
+    )
+    print('The error initialisation sizes are', *error_init_size_list)
+    target_sequence = Variable(torch.zeros(T, *error_init_size_list[0]))
+
+    print('Define a', str(L + 1), 'layer Prednet')
+    model = PrednetModel(error_init_size_list)
+
+    print('Create a MSE criterion')
+    loss_fn = nn.MSELoss()
+
+    print('Run for', max_epoch, 'iterations')
+    for epoch in range(0, max_epoch):
+        state = [None] * (L + 1)
+        error = [None] * (L + 1)
+        loss = 0
+        for t in range(0, T):
+            error, state = model(input_sequence[t], error, state)
+            loss += loss_fn(error[0], target_sequence[t])
+
+        print(' > Epoch {:2d} loss: {:.3f}'.format((epoch + 1), loss.data[0]))
+
+        # zero grad parameters
+        model.zero_grad()
+
+        # compute new grad parameters through time!
+        loss.backward()
+
+        # learning_rate step against the gradient
+        for p in model.parameters():
+            p.data.sub_(p.grad.data * lr)
+
 def main():
     test_one_layer_model()
     test_two_layer_model()
     test_L_layer_model()
+    test_training()
 
 
 if __name__ == '__main__':
