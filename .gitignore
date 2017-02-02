@@ -1,2 +1,5 @@
 # Remove PyCharm configuration
 .idea
+
+# Remove Python caching
+__pycache__
