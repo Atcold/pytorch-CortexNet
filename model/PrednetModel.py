@@ -179,7 +179,7 @@ def test_L_layer_model():
         error = [None] * (L + 1)
         error, state = model(input_image, error=error, state=state)
 
-        for layer in range(0, L):
+        for layer in range(0, L + 1):
             print('Layer', layer + 1, 'error has size', list(error[layer].data.size()))
             print('Layer', layer + 1, 'state has size', list(state[layer][0].data.size()))
 
