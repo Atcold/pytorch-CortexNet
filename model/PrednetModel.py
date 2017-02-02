@@ -7,7 +7,9 @@ from model.GenerativeCell import GenerativeCell
 
 
 # Define some constants
-LAYER_SIZE = [3] + list(2 ** p for p in range(4, 7))
+OUT_LAYER_SIZE = (3,) + tuple(2 ** p for p in range(4, 7))
+ERR_LAYER_SIZE = tuple(size * 2 for size in OUT_LAYER_SIZE)
+IN_LAYER_SIZE = (3,) + ERR_LAYER_SIZE
 
 
 class BuildOneLayerModel(nn.Module):
@@ -18,13 +20,13 @@ class BuildOneLayerModel(nn.Module):
     def __init__(self, error_size_list):
         super().__init__()
         self.discriminator = DiscriminativeCell(
-            input_size={'input': LAYER_SIZE[0], 'state': LAYER_SIZE[0]},
-            hidden_size=LAYER_SIZE[0],
+            input_size={'input': IN_LAYER_SIZE[0], 'state': OUT_LAYER_SIZE[0]},
+            hidden_size=OUT_LAYER_SIZE[0],
             first=True
         )
         self.generator = GenerativeCell(
-            input_size={'error': 2 * LAYER_SIZE[0], 'up_state': 0},
-            hidden_size=LAYER_SIZE[0],
+            input_size={'error': ERR_LAYER_SIZE[0], 'up_state': 0},
+            hidden_size=OUT_LAYER_SIZE[0],
             error_init_size=error_size_list[0]
         )
 
@@ -42,22 +44,22 @@ class BuildTwoLayerModel(nn.Module):
     def __init__(self, error_size_list):
         super().__init__()
         self.discriminator_1 = DiscriminativeCell(
-            input_size={'input': LAYER_SIZE[0], 'state': LAYER_SIZE[0]},
-            hidden_size=LAYER_SIZE[0],
+            input_size={'input': IN_LAYER_SIZE[0], 'state': OUT_LAYER_SIZE[0]},
+            hidden_size=OUT_LAYER_SIZE[0],
             first=True
         )
         self.discriminator_2 = DiscriminativeCell(
-            input_size={'input': 2 * LAYER_SIZE[0], 'state': LAYER_SIZE[1]},
-            hidden_size=LAYER_SIZE[1]
+            input_size={'input': IN_LAYER_SIZE[1], 'state': OUT_LAYER_SIZE[1]},
+            hidden_size=OUT_LAYER_SIZE[1]
         )
         self.generator_1 = GenerativeCell(
-            input_size={'error': 2 * LAYER_SIZE[0], 'up_state': LAYER_SIZE[1]},
-            hidden_size=LAYER_SIZE[0],
+            input_size={'error': ERR_LAYER_SIZE[0], 'up_state': OUT_LAYER_SIZE[1]},
+            hidden_size=OUT_LAYER_SIZE[0],
             error_init_size=error_size_list[0]
         )
         self.generator_2 = GenerativeCell(
-            input_size={'error': 2 * LAYER_SIZE[1], 'up_state': 0},
-            hidden_size=LAYER_SIZE[1],
+            input_size={'error': ERR_LAYER_SIZE[1], 'up_state': 0},
+            hidden_size=OUT_LAYER_SIZE[1],
             error_init_size=error_size_list[1]
         )
 
