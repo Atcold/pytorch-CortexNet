@@ -232,6 +232,7 @@ def _test_training():
         for p in model.parameters():
             p.data.sub_(p.grad.data * lr)
 
+
 def _main():
     _test_one_layer_model()
     _test_two_layer_model()

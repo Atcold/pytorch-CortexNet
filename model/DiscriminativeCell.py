@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
+import torch.nn.functional as f
 from torch.autograd import Variable
 
 
@@ -32,9 +32,9 @@ class DiscriminativeCell(nn.Module):
         self.from_state = nn.Conv2d(input_size['state'], hidden_size, KERNEL_SIZE, padding=PADDING)
 
     def forward(self, bottom_up, state):
-        input_projection = self.first and bottom_up or F.relu(F.max_pool2d(self.from_bottom(bottom_up), POOL, POOL))
-        state_projection = F.relu(self.from_state(state))
-        error = F.relu(torch.cat((input_projection - state_projection, state_projection - input_projection), 1))
+        input_projection = self.first and bottom_up or f.relu(f.max_pool2d(self.from_bottom(bottom_up), POOL, POOL))
+        state_projection = f.relu(self.from_state(state))
+        error = f.relu(torch.cat((input_projection - state_projection, state_projection - input_projection), 1))
         return error
 
 
