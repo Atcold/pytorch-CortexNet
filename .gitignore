@@ -1,5 +1,15 @@
 # Remove PyCharm configuration
 .idea
 
-# Remove Python caching
+# Remove [I]Python caching
 __pycache__
+.ipynb_checkpoints/
+
+# Remove Vim temp files
+*.sw*
+
+# Remove other unnecessary stuff
+*.dot*
+*.tar
+*.txt
+*.jpg
