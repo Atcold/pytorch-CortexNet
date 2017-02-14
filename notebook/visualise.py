@@ -1,7 +1,8 @@
 from graphviz import Digraph
 from torch.autograd import Variable
 
-def make_dot(var):
+
+def make_dot(root):
     node_attr = dict(style='filled',
                      shape='box',
                      align='left',
@@ -14,7 +15,7 @@ def make_dot(var):
     def add_nodes(var):
         if var not in seen:
             if isinstance(var, Variable):
-                value = '('+(', ').join(['%d'% v for v in var.size()])+')'
+                value = '(' + ', '.join(['%d'% v for v in var.size()]) + ')'
                 dot.node(str(id(var)), str(value), fillcolor='lightblue')
             else:
                 dot.node(str(id(var)), str(type(var).__name__))
@@ -23,5 +24,5 @@ def make_dot(var):
                 for u in var.previous_functions:
                     dot.edge(str(id(u[0])), str(id(var)))
                     add_nodes(u[0])
-    add_nodes(var.creator)
+    add_nodes(root.creator)
     return dot
