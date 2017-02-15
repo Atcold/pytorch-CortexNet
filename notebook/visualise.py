@@ -1,5 +1,7 @@
 from graphviz import Digraph
 from torch.autograd import Variable
+import sys, subprocess
+import uuid
 
 
 def make_dot(root):
@@ -26,3 +28,13 @@ def make_dot(root):
                     add_nodes(u[0])
     add_nodes(root.creator)
     return dot
+
+
+def show_graph(root):
+    dot_file_name = '/tmp/' + str(uuid.uuid4())
+    make_dot(root).render(dot_file_name)
+    pdf_file_name = dot_file_name + '.pdf'
+    if sys.platform == 'darwin':
+        subprocess.call(('open', pdf_file_name))
+    elif sys.platform == 'linux':
+        subprocess.call(('xdg-open', pdf_file_name))
