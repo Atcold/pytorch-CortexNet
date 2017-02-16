@@ -67,8 +67,8 @@ class Model01(nn.Module):
         for layer in range(0, self.hidden_layers):  # connect discriminative blocks
             x = getattr(self, 'D_' + str(layer + 1))(x)
             residuals.append(x)
-            x = f.relu(x)
             if layer < self.hidden_layers - 1 and state: x += state[layer]
+            x = f.relu(x)
             x = getattr(self, 'BN_D_' + str(layer + 1))(x)
             activation_sizes.append(x.size())  # cache output size for later retrieval
         state = state or [None] * (self.hidden_layers - 1)
@@ -87,27 +87,41 @@ class Model01(nn.Module):
 
 
 def _test_model_01():
-    x = V(torch.rand(1, 3, 4 * 2**3 + 3, 6 * 2**3 + 5))
-    model_01 = Model01(network_size=(3, 6, 12, 18, 10),
-                       input_spatial_size=x.data.size()[2:])
+    T = 2
+    x = torch.rand(T + 1, 1, 3, 4 * 2**3 + 3, 6 * 2**3 + 5)
+    K = 10
+    y = torch.LongTensor(T, 1).random_(K)
+    model_01 = Model01(network_size=(3, 6, 12, 18, K),
+                       input_spatial_size=x[0].size()[2:])
 
     state = None
-    (x_hat, state), (emb, idx) = model_01(x, state)
+    (x_hat, state), (emb, idx) = model_01(V(x[0]), state)
 
-    print('Input size:', tuple(x.data.size()))
+    print('Input size:', tuple(x.size()))
     print('Output size:', tuple(x_hat.data.size()))
     print('Video index size:', tuple(idx.size()))
     for i, s in enumerate(state):
         print('State', i + 1, 'has size:', tuple(s.size()))
     print('Embedding has size:', emb.data.numel())
 
+    mse = nn.MSELoss()
+    nll = nn.CrossEntropyLoss()
+    x_next = V(x[1])
+    y_var = V(y[0])
+    loss_t1 = mse(x_hat, x_next) + nll(idx, y_var)
+
     from visualise import show_graph
-    show_graph(x_hat)
+    show_graph(loss_t1)
 
     # run one more time
-    (x_hat, _), _ = model_01(x, state)
-    show_graph(x_hat)
+    (x_hat, _), (_, idx) = model_01(V(x[1]), state)
 
+    x_next = V(x[2])
+    y_var = V(y[1])
+    loss_t2 = mse(x_hat, x_next) + nll(idx, y_var)
+    loss_tot = loss_t2 + loss_t1
+
+    show_graph(loss_tot)
 
 if __name__ == '__main__':
     _test_model_01()
