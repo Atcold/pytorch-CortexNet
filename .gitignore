@@ -1,5 +1,5 @@
-# Remove PyCharm configuration
-.idea
+# Remove only PyCharm's workspace configuration
+workspace.xml
 
 # Remove [I]Python caching
 __pycache__
