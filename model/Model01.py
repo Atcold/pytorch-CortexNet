@@ -111,7 +111,7 @@ def _test_model():
     y_var = V(y[0])
     loss_t1 = mse(x_hat, x_next) + nll(idx, y_var)
 
-    from visualise import show_graph
+    from utils.visualise import show_graph
     show_graph(loss_t1)
 
     # run one more time
