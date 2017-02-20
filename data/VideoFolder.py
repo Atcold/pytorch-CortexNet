@@ -7,7 +7,7 @@ from os.path import isdir, join
 from itertools import islice
 
 from numpy.core.multiarray import concatenate
-from skvideo.io import vreader, ffprobe
+from skvideo.io import FFmpegReader, ffprobe
 from tqdm import tqdm
 from time import sleep
 from bisect import bisect
@@ -71,19 +71,27 @@ class VideoFolder(data.Dataset):
 
         if opened_video is None:  # no (matching) handle found
             video_path = join(self.root, self.videos[video_idx][1][0])  # build video path
-            video_iter = vreader(video_path)  # get an iterator
-            opened_video = [seek, islice(video_iter, seek, None)]  # go to target seek and create o.v. object
+            video_file = FFmpegReader(video_path)  # get a video file pointer
+            video_iter = video_file.nextFrame()  # get an iterator
+            opened_video = [seek, islice(video_iter, seek, None), video_file]  # seek video and create o.v. item
             self.opened_videos[video_idx].append(opened_video)  # add opened video object to o.v. list
 
         opened_video[0] = seek + 1  # update seek pointer
         frame = next(opened_video[1])  # cache output frame
-        if last: self.opened_videos[video_idx].remove(opened_video)  # remove exhausted iterator
+        if last:
+            opened_video[2]._close()  # close video file (private method?!)
+            self.opened_videos[video_idx].remove(opened_video)  # remove o.v. item
 
         return frame
 
     def free(self):
-        # TODO: close all video files and empty
-        pass
+        """
+        Frees all video files' pointers
+        """
+        for video in self.opened_videos:  # for every opened video
+            for _ in range(len(video)):  # for as many times as pointers
+                opened_video = video.pop()  # pop an item
+                opened_video[2]._close()  # close the file
 
     @staticmethod
     def _find_classes(data_path):
@@ -129,20 +137,10 @@ def test():
     import inflect
     ordinal = inflect.engine().ordinal
 
-    # get frames 50 -> 52
-    # for i in range(50, 53):
-    #     Image.fromarray(video_data_set[i][0]).show()
-    # print(video_data_set.opened_videos)
-
     def print_list(my_list):
         for a, b in enumerate(my_list):
-            print(a, ':', b)
-
-    # Image.fromarray(video_data_set[0][0]).show()
-    # print_list(video_data_set.opened_videos)
-    #
-    # Image.fromarray(video_data_set[252][0]).show()
-    # print_list(video_data_set.opened_videos)
+            print(a, ':', end=' [')
+            print(*b, sep=',\n     ', end=']\n')
 
     # get first 3 batches
     n = ceil(len(video_data_set) / batch_size)
@@ -155,13 +153,23 @@ def test():
             batch.append(tuple(video_data_set[i * n + j][0] for i in range(batch_size)))
             batch[-1] = concatenate(batch[-1], 0)
         batch = concatenate(batch, 1)
-        print(batch.shape, 50*'-')
         Image.fromarray(batch).\
-            resize((batch.shape[1]//10, batch.shape[0]//10))
+            resize((batch.shape[1]//10, batch.shape[0]//10)).\
+            show(title='batch ' + str(j))
         print(ordinal(big_j // 90 + 1), '90 batches of shape', batch.shape)
         print_list(video_data_set.opened_videos)
 
-    pass
+    print('Freeing resources')
+    video_data_set.free()
+    print_list(video_data_set.opened_videos)
+
+    # get frames 50 -> 52
+    batch = list()
+    for i in range(50, 53):
+        batch.append(video_data_set[i][0])
+    Image.fromarray(concatenate(batch, 1)).show()
+    print_list(video_data_set.opened_videos)
+
 
 if __name__ == '__main__':
     test()
