@@ -1,5 +1,6 @@
 from math import ceil
 
+import torch
 import torch.utils.data as data
 from os import listdir
 from os.path import isdir, join
@@ -8,6 +9,7 @@ from itertools import islice
 
 from numpy.core.multiarray import concatenate
 from skvideo.io import FFmpegReader, ffprobe
+from torch.utils.data.sampler import Sampler
 from tqdm import tqdm
 from time import sleep
 from bisect import bisect
@@ -17,10 +19,56 @@ from bisect import bisect
 VIDEO_EXTENSIONS = ['.mp4']  # pre-processing outputs MP4s only
 
 
+class BatchSampler(Sampler):
+    def __init__(self, data_source, batch_size):
+        """
+        Samples batches sequentially, always in the same order.
+
+        :param data_source: data set to sample from
+        :type data_source: Dataset
+        :param batch_size: concurrent number of video streams
+        :type batch_size: int
+        """
+        self.num_samples = ceil(len(data_source) / batch_size) * batch_size
+
+    def __iter__(self):
+        # TODO: something with yield and batch_size
+        # return iter(range(self.num_samples))
+        pass
+
+    def __len__(self):
+        return self.num_samples  # fake nb of samples, transparent wrapping around
 
 
+def video_collate(batch: int, batch_size: int) -> torch.Tensor or list(torch.Tensor):
+    # TODO: return matrix (batch_size x T)
+    """
+    Puts each data field into a tensor with outer dimension batch size
 
-
+    :param batch:
+    :type batch:
+    :param batch_size:
+    :type batch_size:
+    :return:
+    :rtype:
+    """
+    # if torch.is_tensor(batch[0]):
+    #     return torch.cat([t.unsqueeze(0) for t in batch], 0)
+    # elif isinstance(batch[0], int):
+    #     return torch.LongTensor(batch)
+    # elif isinstance(batch[0], float):
+    #     return torch.DoubleTensor(batch)
+    # elif isinstance(batch[0], str):
+    #     return batch
+    # elif isinstance(batch[0], collections.Iterable):
+    #     # if each batch element is not a tensor, then it should be a tuple
+    #     # of tensors; in that case we collate each element in the tuple
+    #     transposed = zip(*batch)
+    #     return [default_collate(samples) for samples in transposed]
+    #
+    # raise TypeError(("batch must contain tensors, numbers, or lists; found {}"
+    #                  .format(type(batch[0]))))
+    pass
 
 
 class VideoFolder(data.Dataset):
@@ -121,7 +169,7 @@ class VideoFolder(data.Dataset):
         return videos, frames
 
 
-def test():
+def test_video_folder():
     from textwrap import fill, indent
 
     batch_size = 5
@@ -172,4 +220,4 @@ def test():
 
 
 if __name__ == '__main__':
-    test()
+    test_video_folder()
