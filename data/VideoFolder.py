@@ -1,15 +1,15 @@
-from math import ceil
-
+import collections
 import torch
 import torch.utils.data as data
+
+from math import ceil
 from os import listdir
 from os.path import isdir, join
-
 from itertools import islice
-
-from numpy.core.multiarray import concatenate
+from numpy.core.multiarray import concatenate, ndarray
 from skvideo.io import FFmpegReader, ffprobe
 from torch.utils.data.sampler import Sampler
+from torchvision import transforms as trn
 from tqdm import tqdm
 from time import sleep
 from bisect import bisect
@@ -29,46 +29,42 @@ class BatchSampler(Sampler):
         :param batch_size: concurrent number of video streams
         :type batch_size: int
         """
-        self.num_samples = ceil(len(data_source) / batch_size) * batch_size
+        self.batch_size = batch_size
+        self.samples_per_row = ceil(len(data_source) / batch_size)
+        self.num_samples = self.samples_per_row * batch_size
 
     def __iter__(self):
-        # TODO: something with yield and batch_size
-        # return iter(range(self.num_samples))
-        pass
+        return (self.samples_per_row * i + j for j in range(self.samples_per_row) for i in range(self.batch_size))
 
     def __len__(self):
         return self.num_samples  # fake nb of samples, transparent wrapping around
 
 
-def video_collate(batch: int, batch_size: int) -> torch.Tensor or list(torch.Tensor):
-    # TODO: return matrix (batch_size x T)
-    """
-    Puts each data field into a tensor with outer dimension batch size
+class VideoCollate:
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
 
-    :param batch:
-    :type batch:
-    :param batch_size:
-    :type batch_size:
-    :return:
-    :rtype:
-    """
-    # if torch.is_tensor(batch[0]):
-    #     return torch.cat([t.unsqueeze(0) for t in batch], 0)
-    # elif isinstance(batch[0], int):
-    #     return torch.LongTensor(batch)
-    # elif isinstance(batch[0], float):
-    #     return torch.DoubleTensor(batch)
-    # elif isinstance(batch[0], str):
-    #     return batch
-    # elif isinstance(batch[0], collections.Iterable):
-    #     # if each batch element is not a tensor, then it should be a tuple
-    #     # of tensors; in that case we collate each element in the tuple
-    #     transposed = zip(*batch)
-    #     return [default_collate(samples) for samples in transposed]
-    #
-    # raise TypeError(("batch must contain tensors, numbers, or lists; found {}"
-    #                  .format(type(batch[0]))))
-    pass
+    def __call__(self, batch: iter) -> torch.Tensor or list(torch.Tensor):
+        """
+        Puts each data field into a tensor with outer dimension batch size
+
+        :param batch: samples from a Dataset object
+        :type batch: list
+        :return: temporal batch of frames of size (t, batch_size, *frame.size()), 0 <= t < T, most likely t = T - 1
+        :rtype: tuple
+        """
+        if torch.is_tensor(batch[0]):
+            return torch.cat(tuple(t.unsqueeze(0) for t in batch), 0).view(-1, self.batch_size, *batch[0].size())
+        elif isinstance(batch[0], int):
+            return torch.LongTensor(batch).view(-1, self.batch_size)
+        elif isinstance(batch[0], collections.Iterable):
+            # if each batch element is not a tensor, then it should be a tuple
+            # of tensors; in that case we collate each element in the tuple
+            transposed = zip(*batch)
+            return tuple(self.__call__(samples) for samples in transposed)
+
+        raise TypeError(("batch must contain tensors, numbers, or lists; found {}"
+                         .format(type(batch[0]))))
 
 
 class VideoFolder(data.Dataset):
@@ -152,6 +148,7 @@ class VideoFolder(data.Dataset):
     def _make_data_set(data_path, classes, class_to_idx):
         def _is_video_file(filename_):
             return any(filename_.endswith(extension) for extension in VIDEO_EXTENSIONS)
+
         videos = list()
         frames = 0
         for class_ in tqdm(classes, ncols=80):
@@ -169,7 +166,7 @@ class VideoFolder(data.Dataset):
         return videos, frames
 
 
-def test_video_folder():
+def _test_video_folder():
     from textwrap import fill, indent
 
     batch_size = 5
@@ -181,7 +178,6 @@ def test_video_folder():
     print('There are {} frames'.format(len(video_data_set)))
     print('Videos in the data set:', *video_data_set.videos, sep='\n')
 
-    from PIL import Image
     import inflect
     ordinal = inflect.engine().ordinal
 
@@ -201,9 +197,7 @@ def test_video_folder():
             batch.append(tuple(video_data_set[i * n + j][0] for i in range(batch_size)))
             batch[-1] = concatenate(batch[-1], 0)
         batch = concatenate(batch, 1)
-        Image.fromarray(batch).\
-            resize((batch.shape[1]//10, batch.shape[0]//10)).\
-            show(title='batch ' + str(j))
+        _show_numpy(batch, 1e-1)
         print(ordinal(big_j // 90 + 1), '90 batches of shape', batch.shape)
         print_list(video_data_set.opened_videos)
 
@@ -215,9 +209,53 @@ def test_video_folder():
     batch = list()
     for i in range(50, 53):
         batch.append(video_data_set[i][0])
-    Image.fromarray(concatenate(batch, 1)).show()
+    _show_numpy(concatenate(batch, 1))
     print_list(video_data_set.opened_videos)
 
 
+def _test_data_loader():
+    big_t = 10
+    batch_size = 5
+    t = trn.Compose((trn.ToPILImage(), trn.ToTensor()))  # <-- add trn.CenterCrop(224) in between for training
+    data_set = VideoFolder('small_data_set', t)
+    my_loader = data.DataLoader(dataset=data_set, batch_size=batch_size * big_t, shuffle=False,
+                                sampler=BatchSampler(data_set, batch_size), num_workers=0,
+                                collate_fn=VideoCollate(batch_size))
+    print('Is my_loader an iterator [has __next__()]:', isinstance(my_loader, collections.Iterator))
+    print('Is my_loader an iterable [has __iter__()]:', isinstance(my_loader, collections.Iterable))
+    my_iter = iter(my_loader)
+    my_batch = next(my_iter)
+    print('my_batch is a', type(my_batch), 'of length', len(my_batch))
+    print('my_batch[0] is a', my_batch[0].type(), 'of size', tuple(my_batch[0].size()), '  # will 224, 224')
+    _show_torch(_tile_up(my_batch), .2)
+    for i in range(3): _show_torch(_tile_up(next(my_iter)), .2)
+
+
+def _show_numpy(tensor: ndarray, zoom: float = 1.) -> None:
+    """
+    Display a ndarray image on screen
+
+    :param tensor: image to visualise, of size (h, w, 1/3)
+    :type tensor: ndarray
+    :param zoom: zoom factor
+    :type zoom: float
+    """
+    from PIL import Image
+    shape = tuple(map(lambda s: round(s * zoom), tensor.shape))
+    Image.fromarray(tensor).resize((shape[1], shape[0])).show()
+
+
+def _show_torch(tensor: torch.FloatTensor, zoom: float = 1.) -> None:
+    numpy_tensor = tensor.clone().mul(255).int().numpy().astype('u1').transpose(1, 2, 0)
+    _show_numpy(numpy_tensor, zoom)
+
+
+def _tile_up(temporal_batch):
+    a = torch.cat(tuple(temporal_batch[0][:, i] for i in range(temporal_batch[0].size(1))), 2)
+    a = torch.cat(tuple(a[j] for j in range(a.size(0))), 2)
+    return a
+
+
 if __name__ == '__main__':
-    test_video_folder()
+    _test_video_folder()
+    _test_data_loader()
