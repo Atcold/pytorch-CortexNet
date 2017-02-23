@@ -16,22 +16,22 @@ from data.VideoFolder import VideoFolder, BatchSampler, VideoCollate
 
 parser = argparse.ArgumentParser(description='PyTorch MatchNet generative model training script')
 _ = parser.add_argument  # define add_argument shortcut
-_('--data',         type=str,   default='./data/tmp_data_set', help='location of the video data')
-_('--model',        type=str,   default='model_01',            help='type of auto-encoder')
-_('--size',         type=int,   default=(3, 6, 12), nargs='*', help='number and size of hidden layers', metavar='S')
-_('--spatial-size', type=int,   default=(256, 256), nargs=2,   help='frame cropping size', metavar=('H', 'W'))
-_('--nb-videos',    type=int,   default=10,                    help='number of training videos')
-_('--lr',           type=float, default=0.1,                   help='initial learning rate')
-_('--momentum',     type=float, default=0.9, metavar='M',      help='momentum')
-_('--weight-decay', type=float, default=1e-4, metavar='W',     help='weight decay (default: 1e-4)')
-_('--clip',         type=float, default=0.5,                   help='gradient clipping')
-_('--epochs',       type=int,   default=6,                     help='upper epoch limit')
-_('--batch-size',   type=int,   default=20,    metavar='B',    help='batch size')
-_('--big-t',        type=int,   default=20,                    help='sequence length')
-_('--seed',         type=int,   default=0,                     help='random seed')
-_('--log-interval', type=int,   default=200,   metavar='N',    help='report interval')
-_('--save',         type=str,   default='model.pth.tar',       help='path to save the final model')
-_('--cuda',                     action='store_true',           help='use CUDA')
+_('--data', type=str, default='./data/tmp_data_set', help='location of the video data')
+_('--model', type=str, default='model_01', help='type of auto-encoder')
+_('--size', type=int, default=(3, 6, 12), nargs='*', help='number and size of hidden layers', metavar='S')
+_('--spatial-size', type=int, default=(256, 256), nargs=2, help='frame cropping size', metavar=('H', 'W'))
+_('--nb-videos', type=int, default=10, help='number of training videos')
+_('--lr', type=float, default=0.1, help='initial learning rate')
+_('--momentum', type=float, default=0.9, metavar='M', help='momentum')
+_('--weight-decay', type=float, default=1e-4, metavar='W', help='weight decay (default: 1e-4)')
+_('--lambda', type=float, default=0.1, help='CE stabiliser multiplier', dest='lambda_')
+_('--epochs', type=int, default=6, help='upper epoch limit')
+_('--batch-size', type=int, default=20, metavar='B', help='batch size')
+_('--big-t', type=int, default=20, help='sequence length')
+_('--seed', type=int, default=0, help='random seed')
+_('--log-interval', type=int, default=200, metavar='N', help='report interval')
+_('--save', type=str, default='model.pth.tar', help='path to save the final model')
+_('--cuda', action='store_true', help='use CUDA')
 args = parser.parse_args()
 
 # Set the random seed manually for reproducibility.
@@ -124,13 +124,14 @@ def repackage_hidden(h):
 
 def train(train_loader, model, loss_fun, optimiser, epoch):
     print('Training epoch', epoch + 1)
+    model.train()  # set model in train mode
     total_loss = {'mse': 0, 'ce': 0}
     mse, nll = loss_fun
 
     def compute_loss(x_, next_x, y_, state_):
         (x_hat_, state_), (_, idx_) = model(V(x_), state_)
         mse_loss_ = mse(x_hat_, V(next_x))
-        ce_loss_ = nll(idx_, V(y_)) / 10  # scaling factor hack, TODO change
+        ce_loss_ = nll(idx_, V(y_)) * args.lambda_
         total_loss['mse'] += mse_loss_.data[0]
         total_loss['ce'] += ce_loss_.data[0]
         return ce_loss_, mse_loss_, state_
