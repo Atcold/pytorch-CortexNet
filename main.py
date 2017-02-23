@@ -115,13 +115,6 @@ def main():
         torch.save(model, args.save)
 
 
-def repackage_hidden(h):
-    """Wraps hidden states in new Variables, to detach them from their history."""
-    if not h: return None
-    elif type(h) == V: return V(h.data)
-    else: return list(repackage_hidden(v) for v in h)
-
-
 def train(train_loader, model, loss_fun, optimiser, epoch):
     print('Training epoch', epoch + 1)
     model.train()  # set model in train mode
@@ -140,7 +133,7 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
     state = None
     from_past = None
     for batch_nb, (x, y) in enumerate(train_loader):
-        state = repackage_hidden(state)
+        state = repackage_state(state)
         loss = 0
         # BTT loop
         if from_past:
@@ -162,12 +155,23 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
             cur_mse_loss = total_loss['mse'] / args.log_interval
             cur_ce_loss = total_loss['ce'] / args.log_interval
             elapsed = time.time() - start_time
-            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:6.2f} | MSE {:5.2f} | CE {:5.2f}'.
+            print('| epoch {:3d} | {:3d}/{:3d} batches | lr {:02.2f} | ms/batch {:7.2f} | MSE {:5.2f} | CE {:5.2f}'.
                   format(epoch + 1, batch_nb + 1, len(train_loader), args.lr,
                          elapsed * 1000 / args.log_interval, cur_mse_loss, cur_ce_loss))
-            total_loss['mse'] = 0
-            total_loss['cv'] = 0
+            for k in total_loss: total_loss[k] = 0  # zero the losses
             start_time = time.time()
+
+
+def repackage_state(h):
+    """
+    Wraps hidden states in new Variables, to detach them from their history.
+    """
+    if not h:
+        return None
+    elif type(h) == V:
+        return V(h.data)
+    else:
+        return list(repackage_state(v) for v in h)
 
 
 if __name__ == '__main__':
