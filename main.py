@@ -124,34 +124,48 @@ def repackage_hidden(h):
 
 def train(train_loader, model, loss_fun, optimiser, epoch):
     print('Training epoch', epoch + 1)
-    total_loss = 0
+    total_loss = {'mse': 0, 'ce': 0}
     mse, nll = loss_fun
+
+    def compute_loss(x_, next_x, y_, state_):
+        (x_hat_, state_), (_, idx_) = model(V(x_), state_)
+        mse_loss_ = mse(x_hat_, V(next_x))
+        ce_loss_ = nll(idx_, V(y_)) / 10  # scaling factor hack, TODO change
+        total_loss['mse'] += mse_loss_.data[0]
+        total_loss['ce'] += ce_loss_.data[0]
+        return ce_loss_, mse_loss_, state_
+
     start_time = time.time()
     state = None
+    from_past = None
     for batch_nb, (x, y) in enumerate(train_loader):
-        print('Training batch', batch_nb + 1)
         state = repackage_hidden(state)
         loss = 0
         # BTT loop
-        for t in range(0, args.big_t - 1):
-            # TODO: deal with sample x[T + 1]
-            (x_hat, state), (emb, idx) = model(V(x[t]), state)
-            loss += mse(x_hat, V(x[t + 1])) + nll(idx, V(y[t]))
+        if from_past:
+            ce_loss, mse_loss, state = compute_loss(from_past[0], x[0], from_past[1], state)
+            loss += mse_loss + ce_loss
+        for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
+            ce_loss, mse_loss, state = compute_loss(x[t], x[t + 1], y[t], state)
+            loss += mse_loss + ce_loss
 
         # compute gradient and do SGD step
         model.zero_grad()
         loss.backward()
         optimiser.step()
 
-        total_loss += loss.data
+        # save last column for future
+        from_past = x[-1], y[-1]
 
         if batch_nb % args.log_interval == 0 and batch_nb:
-            cur_loss = total_loss[0] / args.log_interval
+            cur_mse_loss = total_loss['mse'] / args.log_interval
+            cur_ce_loss = total_loss['ce'] / args.log_interval
             elapsed = time.time() - start_time
-            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | loss {:5.2f} | ppl {:8.2f}'.
-                  format(epoch, batch_nb + 1, len(train_loader) // args.bptt, 0,
-                         elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
-            total_loss = 0
+            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:6.2f} | MSE {:5.2f} | CE {:5.2f}'.
+                  format(epoch + 1, batch_nb + 1, len(train_loader), args.lr,
+                         elapsed * 1000 / args.log_interval, cur_mse_loss, cur_ce_loss))
+            total_loss['mse'] = 0
+            total_loss['cv'] = 0
             start_time = time.time()
 
 
