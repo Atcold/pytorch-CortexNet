@@ -44,7 +44,6 @@ if torch.cuda.is_available():
 
 
 def main():
-
     # Build the model
     if args.model == 'model_01':
         from model.Model01 import Model01 as Model
@@ -93,7 +92,7 @@ def main():
     val_data = VideoFolder(root=val_path, transform=t)
     val_loader = DataLoader(
         dataset=val_data,
-        batch_size=args.batch_size * args.big_t,
+        batch_size=args.batch_size,
         shuffle=False,
         sampler=BatchSampler(data_source=val_data, batch_size=args.batch_size),
         num_workers=1,
@@ -105,11 +104,13 @@ def main():
     for epoch in range(0, args.epochs):
         epoch_start_time = time.time()
         train(train_loader, model, (mse, nll), optimiser, epoch)
-        # val_loss = validate(val_loader, model, mse)
-        val_loss = 0
-
-        print(80 * '-', '| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | valid ppl {:8.2f}'.
-              format(epoch + 1, (time.time() - epoch_start_time), val_loss, math.exp(val_loss)), 80 * '-', sep='\n')
+        val_loss = validate(val_loader, model, (mse, nll))
+        print(
+            80 * '-',
+            '| end of epoch {:3d} | time: {:5.2f}s | MSE {:5.2f} | CE {:5.2f}'.
+            format(epoch + 1, (time.time() - epoch_start_time), val_loss['mse'], val_loss['ce']),
+            80 * '-', sep='\n'
+        )
 
     if args.save != '':
         torch.save(model, args.save)
@@ -160,6 +161,26 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
                          elapsed * 1000 / args.log_interval, cur_mse_loss, cur_ce_loss))
             for k in total_loss: total_loss[k] = 0  # zero the losses
             start_time = time.time()
+
+
+def validate(val_loader, model, loss_fun):
+    model.eval()  # set model in evaluation mode
+    total_loss = {'mse': 0, 'ce': 0}
+    mse, nll = loss_fun
+    batches = iter(val_loader)
+
+    (x, y) = next(batches)
+    state = None
+    for (next_x, next_y) in batches:
+        (x_hat, state), (_, idx) = model(V(x[0], volatile=True), state)  # do not compute graph (volatile)
+        mse_loss = mse(x_hat, V(next_x[0]))
+        ce_loss = nll(idx, V(y[0])) * args.lambda_
+        total_loss['mse'] += mse_loss.data[0]
+        total_loss['ce'] += ce_loss.data[0]
+        x, y = next_x, next_y
+
+    for k in total_loss: total_loss[k] /= (len(val_loader) - 1)  # average out
+    return total_loss
 
 
 def repackage_state(h):
