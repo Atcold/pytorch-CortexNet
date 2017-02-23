@@ -162,7 +162,7 @@ class VideoFolder(data.Dataset):
                     item = ((frames - 1, start_idx), (join(class_, filename), class_to_idx[class_]))
                     videos.append(item)
 
-        sleep(0.1)  # allows for progress bar completion
+        sleep(0.5)  # allows for progress bar completion
         return videos, frames
 
 
