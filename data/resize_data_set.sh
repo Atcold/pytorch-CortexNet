@@ -1,9 +1,11 @@
 # Resize video data set minor side to 256
+# ./resize_data_set.sh data_set/
+# will dump rescaled videos into a folder called 256min_data_set
 
 # assert existence of source directory
-src_dir='data_set'
+src_dir=${1%/*}  # remove trailing /, if present
 if [ ! -d $src_dir ]; then
-    echo "Source directory/link "$src_dir" is missing. Exiting."
+    echo "Source directory/link \"$src_dir\" is missing. Exiting."
     exit 1
 fi
 
@@ -36,11 +38,11 @@ for class in $(ls $src_dir); do
         # scale the min side to 256, the other to the even number closest
         # to keep the same aspect ratio
         ffmpeg \
-        -i "$src_video_path" \
+        -i $src_video_path \
         -an \
         -filter:v "scale=w=2*trunc(128*max(1\, iw/ih)):h=2*trunc(128*max(1\, ih/iw))" \
-        -loglevel quiet \
-        "$dst_video_path"
+        -loglevel error \
+        $dst_video_path
 
         # check the output stream
         printf ' --> '
