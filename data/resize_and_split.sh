@@ -119,7 +119,7 @@ for class in $(ls $src_dir); do
             '/nb_frames=/{sub(/nb_frames=/,""); print}')
 
         # skip if too short
-        if [ $frames \< $min_frames ]; then
+        if ((frames < min_frames)); then
             printf "Frames: $b$frames$n < $b$min_frames$n min frames. "
             echo -e "${r}Skipping.$n"
             continue
@@ -134,7 +134,7 @@ for class in $(ls $src_dir); do
             '/duration=/{sub(/duration=/,""); print}')
 
         # if there is a max_frames and we are over it, redefine tot_t
-        if [ -n "$max_frames" ] && [ $frames \> $max_frames ]; then
+        if [ -n "$max_frames" ] && ((frames > max_frames)); then
             printf "Frames: $b$frames$n > $b$max_frames$n max frames. "
             printf "Trimming %.2fs" "$tot_t"
             fps=$(ffprobe \
