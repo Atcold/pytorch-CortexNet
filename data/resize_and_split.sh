@@ -38,6 +38,7 @@ n='\033[0m'     # none
 printf " - "
 if [ -n "$min_frames" ]; then
     echo -e "Skipping videos with < $b$min_frames$n frames"
+    skip_count=0
 else
     echo "No skipping short vidos"
     min_frames=0
@@ -47,6 +48,7 @@ fi
 printf " - "
 if [ -n "$max_frames" ]; then
     echo -e "Trimming videos with > $b$max_frames$n frames"
+    trim_count=0
 else
     echo "No trimming long vidos"
 fi
@@ -122,6 +124,7 @@ for class in $(ls $src_dir); do
         if ((frames < min_frames)); then
             printf "Frames: $b$frames$n < $b$min_frames$n min frames. "
             echo -e "${r}Skipping.$n"
+            ((skip_count++))
             continue
         fi
 
@@ -146,6 +149,7 @@ for class in $(ls $src_dir); do
             tot_t=$(awk \
                 "BEGIN{printf (\"%.4f\",$tot_t-($frames-$max_frames)/($fps))}")
             printf " --> %.2fs. " "$tot_t"
+            ((trim_count++))
         fi
 
         # compute duration in seconds
@@ -208,3 +212,9 @@ for class in $(ls $src_dir); do
     done
 done
 
+printf "\n---------------\n"
+printf "Skipped $b%d$n videos\n" "$skip_count"
+printf "Trimmed $b%d$n videos" "$trim_count"
+printf "\n---------------\n\n"
+echo -e "${r}Exiting.${n}"
+exit 0
