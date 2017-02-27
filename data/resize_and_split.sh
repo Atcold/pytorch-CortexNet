@@ -169,7 +169,7 @@ for class in $(ls $src_dir); do
         # be quiet (show errors only)
         # save at dst_video_path
         printf "Rescaling"
-        dst_video_path="$dst_class_dir/$video"
+        dst_video_path="$dst_class_dir/${video%.*}.mp4"  # replace extension
         ffmpeg \
             -i $src_video_path \
             -an \
@@ -196,7 +196,7 @@ for class in $(ls $src_dir); do
             # be quiet (show errors only)
             # save at val_video_path
             printf " Splitting"
-            val_video_path="$val_class_dir/$video"
+            val_video_path="$val_class_dir/${video%.*}.mp4"  # replace extension
             ffmpeg \
                 -sseof -$split \
                 -i $src_video_path \
