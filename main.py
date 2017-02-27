@@ -88,9 +88,13 @@ def main():
     if args.cuda:
         model.cuda()
 
-    print('Create a MSE and NLL criterions')
+    print('Create a MSE and balanced NLL criterions')
     mse = nn.MSELoss()
-    nll = nn.CrossEntropyLoss()
+
+    # balance classes based on frames per video; default balancing weight is 1.0f
+    w = torch.Tensor(train_data.frames_per_video)
+    w.div_(w.mean()).pow_(-1)
+    nll = nn.CrossEntropyLoss(w)
 
     print('Instantiate a SGD optimiser')
     optimiser = optim.SGD(
@@ -152,7 +156,7 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         # save last column for future
         from_past = x[-1], y[-1]
 
-        if batch_nb % args.log_interval == 0 and batch_nb:
+        if (batch_nb + 1) % args.log_interval == 0:
             cur_mse_loss = total_loss['mse'] / args.log_interval
             cur_ce_loss = total_loss['ce'] / args.log_interval
             elapsed = time.time() - start_time

@@ -82,12 +82,13 @@ class VideoFolder(data.Dataset):
         :type bool
         """
         classes, class_to_idx = self._find_classes(root)
-        videos, frames = self._make_data_set(root, classes, class_to_idx)
+        videos, frames, frames_per_video = self._make_data_set(root, classes, class_to_idx)
 
         self.root = root
         self.videos = videos
         self.opened_videos = [[] for _ in videos]
         self.frames = frames
+        self.frames_per_video = frames_per_video
         self.classes = classes
         self.class_to_idx = class_to_idx
         self.transform = transform
@@ -155,20 +156,23 @@ class VideoFolder(data.Dataset):
             return any(filename_.endswith(extension) for extension in VIDEO_EXTENSIONS)
 
         videos = list()
-        frames = 0
+        frames_per_video = list()
+        frames_counter = 0
         for class_ in tqdm(classes, ncols=80):
             class_path = join(data_path, class_)
             for filename in listdir(class_path):
                 if _is_video_file(filename):
                     video_path = join(class_path, filename)
                     video_meta = ffprobe(video_path)
-                    start_idx = frames
-                    frames += int(video_meta['video'].get('@nb_frames'))
-                    item = ((frames - 1, start_idx), (join(class_, filename), class_to_idx[class_]))
+                    start_idx = frames_counter
+                    frames = int(video_meta['video'].get('@nb_frames'))
+                    frames_per_video.append(frames)
+                    frames_counter += frames
+                    item = ((frames_counter - 1, start_idx), (join(class_, filename), class_to_idx[class_]))
                     videos.append(item)
 
         sleep(0.5)  # allows for progress bar completion
-        return videos, frames
+        return videos, frames_counter, frames_per_video
 
 
 def _test_video_folder():
