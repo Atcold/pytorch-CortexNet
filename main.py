@@ -16,11 +16,10 @@ from data.VideoFolder import VideoFolder, BatchSampler, VideoCollate
 
 parser = argparse.ArgumentParser(description='PyTorch MatchNet generative model training script')
 _ = parser.add_argument  # define add_argument shortcut
-_('--data', type=str, default='./data/tmp_data_set', help='location of the video data')
+_('--data', type=str, default='./data/processed-data', help='location of the video data')
 _('--model', type=str, default='model_01', help='type of auto-encoder')
 _('--size', type=int, default=(3, 6, 12), nargs='*', help='number and size of hidden layers', metavar='S')
 _('--spatial-size', type=int, default=(256, 256), nargs=2, help='frame cropping size', metavar=('H', 'W'))
-_('--nb-videos', type=int, default=10, help='number of training videos')
 _('--lr', type=float, default=0.1, help='initial learning rate')
 _('--momentum', type=float, default=0.9, metavar='M', help='momentum')
 _('--weight-decay', type=float, default=1e-4, metavar='W', help='weight decay (default: 1e-4)')
@@ -44,6 +43,37 @@ if torch.cuda.is_available():
 
 
 def main():
+    # Load data
+    print('Define image pre-processing')
+    # normalise? do we care?
+    t = trn.Compose((trn.ToPILImage(), trn.CenterCrop(args.spatial_size), trn.ToTensor()))
+
+    print('Define train data loader')
+    train_path = path.join(args.data, 'train')
+    train_data = VideoFolder(root=train_path, transform=t, video_index=True)
+    train_loader = DataLoader(
+        dataset=train_data,
+        batch_size=args.batch_size * args.big_t,
+        shuffle=False,
+        sampler=BatchSampler(data_source=train_data, batch_size=args.batch_size),
+        num_workers=1,
+        collate_fn=VideoCollate(batch_size=args.batch_size),
+        pin_memory=True
+    )
+
+    print('Define validation data loader')
+    val_path = path.join(args.data, 'val')
+    val_data = VideoFolder(root=val_path, transform=t, video_index=True)
+    val_loader = DataLoader(
+        dataset=val_data,
+        batch_size=args.batch_size,
+        shuffle=False,
+        sampler=BatchSampler(data_source=val_data, batch_size=args.batch_size),
+        num_workers=1,
+        collate_fn=VideoCollate(batch_size=args.batch_size),
+        pin_memory=True
+    )
+
     # Build the model
     if args.model == 'model_01':
         from model.Model01 import Model01 as Model
@@ -52,7 +82,8 @@ def main():
         exit()
 
     print('Define model')
-    model = Model(args.size + (args.nb_videos,), args.spatial_size)
+    nb_train_videos = len(train_data.videos)
+    model = Model(args.size + (nb_train_videos,), args.spatial_size)
 
     if args.cuda:
         model.cuda()
@@ -67,37 +98,6 @@ def main():
         lr=args.lr,
         momentum=args.momentum,
         weight_decay=args.weight_decay
-    )
-
-    # Load data
-    print('Define image pre-processing')
-    # normalise? do we care?
-    t = trn.Compose((trn.ToPILImage(), trn.CenterCrop(args.spatial_size), trn.ToTensor()))
-
-    print('Define train data loader')
-    train_path = path.join(args.data, 'train')
-    train_data = VideoFolder(root=train_path, transform=t)
-    train_loader = DataLoader(
-        dataset=train_data,
-        batch_size=args.batch_size * args.big_t,
-        shuffle=False,
-        sampler=BatchSampler(data_source=train_data, batch_size=args.batch_size),
-        num_workers=1,
-        collate_fn=VideoCollate(batch_size=args.batch_size),
-        pin_memory=True
-    )
-
-    print('Define validation data loader')
-    val_path = path.join(args.data, 'val')
-    val_data = VideoFolder(root=val_path, transform=t)
-    val_loader = DataLoader(
-        dataset=val_data,
-        batch_size=args.batch_size,
-        shuffle=False,
-        sampler=BatchSampler(data_source=val_data, batch_size=args.batch_size),
-        num_workers=1,
-        collate_fn=VideoCollate(batch_size=args.batch_size),
-        pin_memory=True
     )
 
     # Loop over epochs

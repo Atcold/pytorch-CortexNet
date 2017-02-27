@@ -68,7 +68,7 @@ class VideoCollate:
 
 
 class VideoFolder(data.Dataset):
-    def __init__(self, root, transform=None, target_transform=None):
+    def __init__(self, root, transform=None, target_transform=None, video_index=False):
         """
         Initialise a data.Dataset object for concurrent frame fetching from videos in a directory of folders of videos
 
@@ -78,6 +78,8 @@ class VideoFolder(data.Dataset):
         :type transform: object
         :param target_transform: label transformation / mapping
         :type target_transform: object
+        :param video_index: if True, the label will be the video index instead of target class
+        :type bool
         """
         classes, class_to_idx = self._find_classes(root)
         videos, frames = self._make_data_set(root, classes, class_to_idx)
@@ -90,6 +92,7 @@ class VideoFolder(data.Dataset):
         self.class_to_idx = class_to_idx
         self.transform = transform
         self.target_transform = target_transform
+        self.alternative_target = video_index
 
     def __getitem__(self, frame_idx):
         frame_idx %= self.frames  # wrap around indexing, if asking too much
@@ -100,6 +103,8 @@ class VideoFolder(data.Dataset):
             frame = self.transform(frame)
         if self.target_transform is not None:  # target processing
             target = self.target_transform(target)
+
+        if self.alternative_target: return frame, video_idx
 
         return frame, target
 
