@@ -134,10 +134,13 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         total_loss['ce'] += ce_loss_.data[0]
         return ce_loss_, mse_loss_, state_
 
-    start_time = time.time()
+    data_time = 0
+    batch_time = 0
+    end_time = time.time()
     state = None
     from_past = None
     for batch_nb, (x, y) in enumerate(train_loader):
+        data_time += time.time() - end_time
         state = repackage_state(state)
         loss = 0
         # BTT loop
@@ -156,15 +159,22 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         # save last column for future
         from_past = x[-1], y[-1]
 
+        # measure batch time
+        batch_time += time.time() - end_time
+        end_time = time.time()  # for computing data_time
+
         if (batch_nb + 1) % args.log_interval == 0:
             cur_mse_loss = total_loss['mse'] / args.log_interval
             cur_ce_loss = total_loss['ce'] / args.log_interval
-            elapsed = time.time() - start_time
-            print('| epoch {:3d} | {:3d}/{:3d} batches | lr {:02.2f} | ms/batch {:7.2f} | MSE {:5.2f} | CE {:5.2f}'.
+            avg_batch_time = batch_time * 1e3 / args.log_interval
+            avg_data_time = data_time * 1e3 / args.log_interval
+            print('| epoch {:3d} | {:3d}/{:3d} batches | lr {:02.2f} |'
+                  ' ms/batch {:7.2f} | ms/data {:7.2f} | MSE {:5.2f} | CE {:5.2f}'.
                   format(epoch + 1, batch_nb + 1, len(train_loader), args.lr,
-                         elapsed * 1000 / args.log_interval, cur_mse_loss, cur_ce_loss))
+                         avg_batch_time, avg_data_time, cur_mse_loss, cur_ce_loss))
             for k in total_loss: total_loss[k] = 0  # zero the losses
-            start_time = time.time()
+            batch_time = 0
+            data_time = 0
 
 
 def validate(val_loader, model, loss_fun):
