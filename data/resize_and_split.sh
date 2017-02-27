@@ -136,16 +136,18 @@ for class in $(ls $src_dir); do
             $src_video_path | awk \
             '/duration=/{sub(/duration=/,""); print}')
 
+        # get src_video frame rate
+        fps=$(ffprobe \
+            -loglevel error \
+            -show_streams \
+            -select_streams v \
+            $src_video_path | awk \
+            '/avg_frame_rate=/{sub(/avg_frame_rate=/,""); print}')
+
         # if there is a max_frames and we are over it, redefine tot_t
         if [ -n "$max_frames" ] && ((frames > max_frames)); then
             printf "Frames: $b$frames$n > $b$max_frames$n max frames. "
             printf "Trimming %.2fs" "$tot_t"
-            fps=$(ffprobe \
-                -loglevel error \
-                -show_streams \
-                -select_streams v \
-                $src_video_path | awk \
-                '/avg_frame_rate=/{sub(/avg_frame_rate=/,""); print}')
             tot_t=$(awk \
                 "BEGIN{printf (\"%.4f\",$tot_t-($frames-$max_frames)/($fps))}")
             printf " --> %.2fs. " "$tot_t"
@@ -163,6 +165,7 @@ for class in $(ls $src_dir); do
         # discard audio stram
         # use it until ffmpeg_end_t
         # rescale the video stram min side to 256
+        # use the input average frame rate as output fps
         # be quiet (show errors only)
         # save at dst_video_path
         printf "Rescaling"
@@ -172,6 +175,7 @@ for class in $(ls $src_dir); do
             -an \
             -to $ffmpeg_end_t \
             -filter:v "scale=w=2*trunc(128*max(1\, iw/ih)):h=2*trunc(128*max(1\, ih/iw))" \
+            -r $fps \
             -loglevel error \
             $dst_video_path
 
@@ -198,6 +202,7 @@ for class in $(ls $src_dir); do
                 -i $src_video_path \
                 -an \
                 -filter:v "scale=w=2*trunc(128*max(1\, iw/ih)):h=2*trunc(128*max(1\, ih/iw))" \
+                -r $fps \
                 -loglevel error \
                 $val_video_path
 
