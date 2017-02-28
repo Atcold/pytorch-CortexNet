@@ -85,9 +85,6 @@ def main():
     nb_train_videos = len(train_data.videos)
     model = Model(args.size + (nb_train_videos,), args.spatial_size)
 
-    if args.cuda:
-        model.cuda()
-
     print('Create a MSE and balanced NLL criterions')
     mse = nn.MSELoss()
 
@@ -95,6 +92,11 @@ def main():
     w = torch.Tensor(train_data.frames_per_video)
     w.div_(w.mean()).pow_(-1)
     nll = nn.CrossEntropyLoss(w)
+
+    if args.cuda:
+        model.cuda()
+        mse.cuda()
+        nll.cuda()
 
     print('Instantiate a SGD optimiser')
     optimiser = optim.SGD(
@@ -141,6 +143,9 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
     from_past = None
     for batch_nb, (x, y) in enumerate(train_loader):
         data_time += time.time() - end_time
+        if args.cuda:
+            x = x.cuda(async=True)
+            y = y.cuda(async=True)
         state = repackage_state(state)
         loss = 0
         # BTT loop
@@ -184,8 +189,14 @@ def validate(val_loader, model, loss_fun):
     batches = iter(val_loader)
 
     (x, y) = next(batches)
+    if args.cuda:
+        x = x.cuda(async=True)
+        y = y.cuda(async=True)
     state = None
     for (next_x, next_y) in batches:
+        if args.cuda:
+            next_x = next_x.cuda(async=True)
+            next_y = next_y.cuda(async=True)
         (x_hat, state), (_, idx) = model(V(x[0], volatile=True), state)  # do not compute graph (volatile)
         mse_loss = mse(x_hat, V(next_x[0]))
         ce_loss = nll(idx, V(y[0])) * args.lambda_
