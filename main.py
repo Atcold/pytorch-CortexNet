@@ -59,8 +59,14 @@ def main():
     t = trn.Compose((trn.ToPILImage(), trn.CenterCrop(args.spatial_size), trn.ToTensor()))
 
     print('Define train data loader')
-    train_path = path.join(args.data, 'train')
-    train_data = VideoFolder(root=train_path, transform=t, video_index=True)
+    train_data_name = 'train_data.tar'
+    if os.access(train_data_name, os.R_OK):
+        train_data = torch.load(train_data_name)
+    else:
+        train_path = path.join(args.data, 'train')
+        train_data = VideoFolder(root=train_path, transform=t, video_index=True)
+        torch.save(train_data, train_data_name)
+
     train_loader = DataLoader(
         dataset=train_data,
         batch_size=args.batch_size * args.big_t,
@@ -72,8 +78,14 @@ def main():
     )
 
     print('Define validation data loader')
-    val_path = path.join(args.data, 'val')
-    val_data = VideoFolder(root=val_path, transform=t, video_index=True)
+    val_data_name = 'val_data.tar'
+    if os.access(val_data_name, os.R_OK):
+        val_data = torch.load(val_data_name)
+    else:
+        val_path = path.join(args.data, 'val')
+        val_data = VideoFolder(root=val_path, transform=t, video_index=True)
+        torch.save(val_data, val_data_name)
+
     val_loader = DataLoader(
         dataset=val_data,
         batch_size=args.batch_size,
