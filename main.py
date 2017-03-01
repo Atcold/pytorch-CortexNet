@@ -11,6 +11,7 @@ from sys import exit, argv
 from torch.autograd import Variable as V
 from torch.utils.data import DataLoader
 from torchvision import transforms as trn
+from datetime import timedelta
 
 from data.VideoFolder import VideoFolder, BatchSampler, VideoCollate
 
@@ -132,13 +133,11 @@ def main():
     for epoch in range(0, args.epochs):
         epoch_start_time = time.time()
         train(train_loader, model, (mse, nll), optimiser, epoch)
+        print(80 * '-', '| end of epoch {:3d} |'.format(epoch + 1), sep='\n', end=' ')
         val_loss = validate(val_loader, model, (mse, nll))
-        print(
-            80 * '-',
-            '| end of epoch {:3d} | time: {:5.2f}s | MSE {:5.2f} | CE {:5.2f}'.
-            format(epoch + 1, (time.time() - epoch_start_time), val_loss['mse'], val_loss['ce']),
-            80 * '-', sep='\n'
-        )
+        elapsed_time = str(timedelta(seconds=int(time.time() - epoch_start_time)))  # HH:MM:SS time format
+        print('time: {} | MSE {:5.2f} | CE {:5.2f}'.format(elapsed_time, val_loss['mse'], val_loss['ce']))
+        print(80 * '-')
 
     if args.save != '':
         torch.save(model, args.save)
