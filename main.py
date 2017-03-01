@@ -1,6 +1,6 @@
 import argparse
+import os
 import time
-import math
 import os.path as path
 
 import torch
@@ -37,6 +37,11 @@ args.size = tuple(args.size)  # cast to tuple
 
 # Print current options
 print('CLI arguments:', ' '.join(argv[1:]))
+
+# Print current commit
+if path.isdir('.git'):  # if we are in a repo
+    with os.popen('git rev-parse HEAD') as pipe:  # get the HEAD's hash
+        print('Current commit hash:', pipe.read(), end='')
 
 # Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
