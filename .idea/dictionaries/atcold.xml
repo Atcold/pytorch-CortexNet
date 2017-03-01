@@ -7,6 +7,7 @@
       <w>cuda</w>
       <w>fromarray</w>
       <w>lstm</w>
+      <w>optim</w>
       <w>prednet</w>
       <w>tanh</w>
     </words>

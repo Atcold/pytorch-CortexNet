@@ -62,7 +62,7 @@ class Model01(nn.Module):
         print(network_size[-2], '-->', network_size[-1])
         self.average = nn.AvgPool2d(self.activation_size[-1])
         self.stabiliser = nn.Linear(network_size[-2], network_size[-1])
-        print(80 * '-', '\n')
+        print(80 * '-', end='\n\n')
 
     def forward(self, x, state):
         activation_sizes = [x.size()]  # start from the input
