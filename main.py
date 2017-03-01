@@ -161,7 +161,8 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
     data_time = 0
     batch_time = 0
     end_time = time.time()
-    state = None
+    if not hasattr(train, 'state'): train.state = None  # init state attribute
+    state = train.state
     from_past = None
     for batch_nb, (x, y) in enumerate(train_loader):
         data_time += time.time() - end_time
@@ -202,6 +203,7 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
             for k in total_loss: total_loss[k] = 0  # zero the losses
             batch_time = 0
             data_time = 0
+    train.state = state  # preserve state across epochs
 
 
 def validate(val_loader, model, loss_fun):
@@ -214,7 +216,8 @@ def validate(val_loader, model, loss_fun):
     if args.cuda:
         x = x.cuda(async=True)
         y = y.cuda(async=True)
-    state = None
+    if not hasattr(validate, 'state'): validate.state = None  # init state attribute
+    state = validate.state
     for (next_x, next_y) in batches:
         if args.cuda:
             next_x = next_x.cuda(async=True)
@@ -225,6 +228,7 @@ def validate(val_loader, model, loss_fun):
         total_loss['mse'] += mse_loss.data[0]
         total_loss['ce'] += ce_loss.data[0]
         x, y = next_x, next_y
+    validate.state = state  # preserve state across epochs
 
     for k in total_loss: total_loss[k] /= (len(val_loader) - 1)  # average out
     return total_loss
