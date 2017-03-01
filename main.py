@@ -7,14 +7,15 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from sys import exit
+from sys import exit, argv
 from torch.autograd import Variable as V
 from torch.utils.data import DataLoader
 from torchvision import transforms as trn
 
 from data.VideoFolder import VideoFolder, BatchSampler, VideoCollate
 
-parser = argparse.ArgumentParser(description='PyTorch MatchNet generative model training script')
+parser = argparse.ArgumentParser(description='PyTorch MatchNet generative model training script',
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 _ = parser.add_argument  # define add_argument shortcut
 _('--data', type=str, default='./data/processed-data', help='location of the video data')
 _('--model', type=str, default='model_01', help='type of auto-encoder')
@@ -22,16 +23,20 @@ _('--size', type=int, default=(3, 6, 12), nargs='*', help='number and size of hi
 _('--spatial-size', type=int, default=(256, 256), nargs=2, help='frame cropping size', metavar=('H', 'W'))
 _('--lr', type=float, default=0.1, help='initial learning rate')
 _('--momentum', type=float, default=0.9, metavar='M', help='momentum')
-_('--weight-decay', type=float, default=1e-4, metavar='W', help='weight decay (default: 1e-4)')
-_('--lambda', type=float, default=0.1, help='CE stabiliser multiplier', dest='lambda_')
+_('--weight-decay', type=float, default=1e-4, metavar='W', help='weight decay')
+_('--lambda', type=float, default=0.1, help='CE stabiliser multiplier', dest='lambda_', metavar='λ')
 _('--epochs', type=int, default=6, help='upper epoch limit')
 _('--batch-size', type=int, default=20, metavar='B', help='batch size')
-_('--big-t', type=int, default=20, help='sequence length')
+_('--big-t', type=int, default=20, help='sequence length', metavar='T')
 _('--seed', type=int, default=0, help='random seed')
 _('--log-interval', type=int, default=200, metavar='N', help='report interval')
 _('--save', type=str, default='model.pth.tar', help='path to save the final model')
 _('--cuda', action='store_true', help='use CUDA')
 args = parser.parse_args()
+args.size = tuple(args.size)  # cast to tuple
+
+# Print current options
+print('CLI arguments:', ' '.join(argv[1:]))
 
 # Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
