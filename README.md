@@ -4,23 +4,28 @@ This repo contains the *PyTorch* version of *MatchNet*.
 
 ## Dependencies
 
-+ [scikit-video](https://github.com/scikit-video/scikit-video): accessing images/videos
-```
++ [scikit-video](https://github.com/scikit-video/scikit-video): accessing images / videos
+
+```bash
 pip install sk-video
 ```
+
 + [tqdm](https://github.com/tqdm/tqdm): progress bar
-```
+
+```bash
 conda config --add channels conda-forge
 conda update --all
 conda install tqdm
 ```
 
-## Train MatchNet
+## Train *MatchNet*
 
-+ [resize_and_split.sh](data/resize_and_split.sh): Prepare your data (video) for training.
-Resizes videos present in folders of folder and then splits them into training and validation set.
-+ [main.py](main.py): Script to start training.
++ [`resize_and_split.sh`](data/resize_and_split.sh): Prepares your (video) data for training.
+Resizes videos present in folders of folders (*i.e.* directory of classes) and may split them into training and validation set.
+May also skip short videos and trim longer ones.
++ [`main.py`](main.py): Script to start training.
+Use `-h` to print the command line arguments help.
 
-```
-python main.py -data /data/folder/
+```bash
+python -u main.py <CLI arguments> | tee train.log
 ```
