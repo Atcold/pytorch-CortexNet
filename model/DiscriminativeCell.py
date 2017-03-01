@@ -79,3 +79,11 @@ def _test_layers():
 
 if __name__ == '__main__':
     _test_layers()
+
+
+__author__ = "Alfredo Canziani"
+__credits__ = ["Alfredo Canziani"]
+__maintainer__ = "Alfredo Canziani"
+__email__ = "alfredo.canziani@gmail.com"
+__status__ = "Prototype"  # "Prototype", "Development", or "Production"
+__date__ = "Feb 17"

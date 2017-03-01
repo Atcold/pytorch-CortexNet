@@ -174,3 +174,11 @@ def _test_training():
 if __name__ == '__main__':
     _test_model()
     _test_training()
+
+
+__author__ = "Alfredo Canziani"
+__credits__ = ["Alfredo Canziani"]
+__maintainer__ = "Alfredo Canziani"
+__email__ = "alfredo.canziani@gmail.com"
+__status__ = "Production"  # "Prototype", "Development", or "Production"
+__date__ = "Feb 17"

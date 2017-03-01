@@ -268,3 +268,11 @@ def _tile_up(temporal_batch):
 if __name__ == '__main__':
     _test_video_folder()
     _test_data_loader()
+
+
+__author__ = "Alfredo Canziani"
+__credits__ = ["Alfredo Canziani"]
+__maintainer__ = "Alfredo Canziani"
+__email__ = "alfredo.canziani@gmail.com"
+__status__ = "Production"  # "Prototype", "Development", or "Production"
+__date__ = "Feb 17"

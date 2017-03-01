@@ -38,3 +38,11 @@ def show_graph(root):
         subprocess.call(('open', pdf_file_name))
     elif sys.platform == 'linux':
         subprocess.call(('xdg-open', pdf_file_name))
+
+
+__author__ = "Sergey Zagoruyko and Alfredo Canziani"
+__credits__ = ["Sergey Zagoruyko", "Alfredo Canziani"]
+__maintainer__ = "Alfredo Canziani"
+__email__ = "alfredo.canziani@gmail.com"
+__status__ = "Production"  # "Prototype", "Development", or "Production"
+__date__ = "Feb 17"

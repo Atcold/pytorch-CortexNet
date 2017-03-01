@@ -111,3 +111,11 @@ def _main():
 
 if __name__ == '__main__':
     _main()
+
+
+__author__ = "Alfredo Canziani"
+__credits__ = ["Alfredo Canziani"]
+__maintainer__ = "Alfredo Canziani"
+__email__ = "alfredo.canziani@gmail.com"
+__status__ = "Prototype"  # "Prototype", "Development", or "Production"
+__date__ = "Jan 17"

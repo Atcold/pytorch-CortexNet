@@ -244,3 +244,11 @@ def repackage_state(h):
 
 if __name__ == '__main__':
     main()
+
+
+__author__ = "Alfredo Canziani"
+__credits__ = ["Alfredo Canziani"]
+__maintainer__ = "Alfredo Canziani"
+__email__ = "alfredo.canziani@gmail.com"
+__status__ = "Development"  # "Prototype", "Development", or "Production"
+__date__ = "Feb 17"
