@@ -153,7 +153,7 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
     def compute_loss(x_, next_x, y_, state_):
         (x_hat_, state_), (_, idx_) = model(V(x_), state_)
         mse_loss_ = mse(x_hat_, V(next_x))
-        ce_loss_ = nll(idx_, V(y_)) * args.lambda_
+        ce_loss_ = nll(idx_, V(y_))
         total_loss['mse'] += mse_loss_.data[0]
         total_loss['ce'] += ce_loss_.data[0]
         return ce_loss_, mse_loss_, state_
@@ -173,10 +173,10 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         # BTT loop
         if from_past:
             ce_loss, mse_loss, state = compute_loss(from_past[0], x[0], from_past[1], state)
-            loss += mse_loss + ce_loss
+            loss += mse_loss + ce_loss * args.lambda_
         for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
             ce_loss, mse_loss, state = compute_loss(x[t], x[t + 1], y[t], state)
-            loss += mse_loss + ce_loss
+            loss += mse_loss + ce_loss * args.lambda_
 
         # compute gradient and do SGD step
         model.zero_grad()
