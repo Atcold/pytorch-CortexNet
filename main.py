@@ -70,9 +70,9 @@ def main():
 
     train_loader = DataLoader(
         dataset=train_data,
-        batch_size=args.batch_size * args.big_t,
+        batch_size=args.batch_size * args.big_t,  # batch_size rows and T columns
         shuffle=False,
-        sampler=BatchSampler(data_source=train_data, batch_size=args.batch_size),
+        sampler=BatchSampler(data_source=train_data, batch_size=args.batch_size),  # given that BatchSampler knows it
         num_workers=1,
         collate_fn=VideoCollate(batch_size=args.batch_size),
         pin_memory=True
@@ -89,7 +89,7 @@ def main():
 
     val_loader = DataLoader(
         dataset=val_data,
-        batch_size=args.batch_size,
+        batch_size=args.batch_size,  # just one column of size batch_size
         shuffle=False,
         sampler=BatchSampler(data_source=val_data, batch_size=args.batch_size),
         num_workers=1,
@@ -191,8 +191,8 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         end_time = time.time()  # for computing data_time
 
         if (batch_nb + 1) % args.log_interval == 0:
-            cur_mse_loss = total_loss['mse'] / args.log_interval
-            cur_ce_loss = total_loss['ce'] / args.log_interval
+            cur_mse_loss = total_loss['mse'] / args.log_interval / args.big_t
+            cur_ce_loss = total_loss['ce'] / args.log_interval / args.big_t
             avg_batch_time = batch_time * 1e3 / args.log_interval
             avg_data_time = data_time * 1e3 / args.log_interval
             print('| epoch {:3d} | {:4d}/{:4d} batches | lr {:02.2f} |'
