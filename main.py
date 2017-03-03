@@ -136,7 +136,7 @@ def main():
         print(80 * '-', '| end of epoch {:3d} |'.format(epoch + 1), sep='\n', end=' ')
         val_loss = validate(val_loader, model, (mse, nll))
         elapsed_time = str(timedelta(seconds=int(time.time() - epoch_start_time)))  # HH:MM:SS time format
-        print('time: {} | MSE {:5.2f} | CE {:5.2f}'.format(elapsed_time, val_loss['mse'], val_loss['ce']))
+        print('time: {} | mMSE {:5.2f} | CE {:5.2f}'.format(elapsed_time, val_loss['mse'] * 1e3, val_loss['ce']))
         print(80 * '-')
 
     if args.save != '':
@@ -196,9 +196,9 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
             avg_batch_time = batch_time * 1e3 / args.log_interval
             avg_data_time = data_time * 1e3 / args.log_interval
             print('| epoch {:3d} | {:4d}/{:4d} batches | lr {:02.2f} |'
-                  ' ms/batch {:7.2f} | ms/data {:7.2f} | MSE {:5.2f} | CE {:5.2f}'.
+                  ' ms/batch {:7.2f} | ms/data {:7.2f} | mMSE {:5.2f} | CE {:5.2f}'.
                   format(epoch + 1, batch_nb + 1, len(train_loader), args.lr,
-                         avg_batch_time, avg_data_time, cur_mse_loss, cur_ce_loss))
+                         avg_batch_time, avg_data_time, cur_mse_loss * 1e3, cur_ce_loss))
             for k in total_loss: total_loss[k] = 0  # zero the losses
             batch_time = 0
             data_time = 0
