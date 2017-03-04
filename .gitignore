@@ -13,3 +13,9 @@ __pycache__
 *.tar
 *.txt
 *.jpg
+*.png
+*.pdf
+
+# Remove experiments
+last
+results
