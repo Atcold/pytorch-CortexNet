@@ -1,19 +1,19 @@
 import argparse
 import os
-import time
 import os.path as path
+import time
+from datetime import timedelta
+from sys import exit, argv
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
-from sys import exit, argv
 from torch.autograd import Variable as V
 from torch.utils.data import DataLoader
 from torchvision import transforms as trn
-from datetime import timedelta
 
 from data.VideoFolder import VideoFolder, BatchSampler, VideoCollate
+from utils.image_plot import show_four, show_ten
 
 parser = argparse.ArgumentParser(description='PyTorch MatchNet generative model training script',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -33,8 +33,11 @@ _('--seed', type=int, default=0, help='random seed')
 _('--log-interval', type=int, default=200, metavar='N', help='report interval')
 _('--save', type=str, default='model.pth.tar', help='path to save the final model')
 _('--cuda', action='store_true', help='use CUDA')
+_('--view', type=int, default=tuple(), help='samples to view at the end of every log-interval batches', metavar='V')
+_('--show-x_hat', action='store_true', help='show x_hat')
 args = parser.parse_args()
 args.size = tuple(args.size)  # cast to tuple
+if type(args.view) is int: args.view = (args.view,)  # cast to tuple
 
 # Print current options
 print('CLI arguments:', ' '.join(argv[1:]))
@@ -151,13 +154,13 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
     mse, nll = loss_fun
 
     def compute_loss(x_, next_x, y_, state_):
-        (x_hat_, state_), (_, idx_) = model(V(x_), state_)
-        mse_loss_ = mse(x_hat_, V(next_x))
+        (x_hat, state_), (_, idx_) = model(V(x_), state_)
+        mse_loss_ = mse(x_hat, V(next_x))
         ce_loss_ = nll(idx_, V(y_))
         total_loss['mse'] += mse_loss_.data[0]
         total_loss['ce'] += ce_loss_.data[0]
-        total_loss['rpl'] += mse(x_hat_, V(x_)).data[0]
-        return ce_loss_, mse_loss_, state_
+        total_loss['rpl'] += mse(x_hat, V(x_)).data[0]
+        return ce_loss_, mse_loss_, state_, x_hat.data
 
     data_time = 0
     batch_time = 0
@@ -174,10 +177,10 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         loss = 0
         # BTT loop
         if from_past:
-            ce_loss, mse_loss, state = compute_loss(from_past[0], x[0], from_past[1], state)
+            ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state)
             loss += mse_loss + ce_loss * args.lambda_
         for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
-            ce_loss, mse_loss, state = compute_loss(x[t], x[t + 1], y[t], state)
+            ce_loss, mse_loss, state, x_hat_data = compute_loss(x[t], x[t + 1], y[t], state)
             loss += mse_loss + ce_loss * args.lambda_
 
         # compute gradient and do SGD step
@@ -193,6 +196,10 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         end_time = time.time()  # for computing data_time
 
         if (batch_nb + 1) % args.log_interval == 0:
+            if args.view:
+                for f in args.view:
+                    show_four(x[t][f], x[t + 1][f], x_hat_data[f], f + 1)
+                    if args.show_x_hat: show_ten(x[t][f], x_hat_data[f])
             for k in total_loss: total_loss[k] /= args.log_interval * args.big_t
             avg_batch_time = batch_time * 1e3 / args.log_interval
             avg_data_time = data_time * 1e3 / args.log_interval
@@ -249,7 +256,6 @@ def repackage_state(h):
 
 if __name__ == '__main__':
     main()
-
 
 __author__ = "Alfredo Canziani"
 __credits__ = ["Alfredo Canziani"]
