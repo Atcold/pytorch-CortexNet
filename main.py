@@ -147,6 +147,13 @@ def main():
         torch.save(model, args.save)
 
 
+def selective_zero(s, new):
+    for b, reset in enumerate(new):
+        if reset:
+            for state_layer in s:
+                state_layer.data[b].zero_()
+
+
 def train(train_loader, model, loss_fun, optimiser, epoch):
     print('Training epoch', epoch + 1)
     model.train()  # set model in train mode
@@ -177,9 +184,11 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         loss = 0
         # BTT loop
         if from_past:
+            selective_zero(state, y[0] != from_past[1])
             ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state)
             loss += mse_loss + ce_loss * args.lambda_
         for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
+            selective_zero(state, y[t + 1] != y[t])
             ce_loss, mse_loss, state, x_hat_data = compute_loss(x[t], x[t + 1], y[t], state)
             loss += mse_loss + ce_loss * args.lambda_
 
@@ -229,6 +238,7 @@ def validate(val_loader, model, loss_fun):
         if args.cuda:
             next_x = next_x.cuda(async=True)
             next_y = next_y.cuda(async=True)
+        selective_zero(state, next_y[0] != y[0])
         (x_hat, state), (_, idx) = model(V(x[0], volatile=True), state)  # do not compute graph (volatile)
         mse_loss = mse(x_hat, V(next_x[0]))
         ce_loss = nll(idx, V(y[0])) * args.lambda_
