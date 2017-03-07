@@ -166,7 +166,7 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         ce_loss_ = nll(idx_, V(y_))
         total_loss['mse'] += mse_loss_.data[0]
         total_loss['ce'] += ce_loss_.data[0]
-        total_loss['rpl'] += mse(x_hat, V(x_)).data[0]
+        total_loss['rpl'] += mse(x_hat, V(x_, volatile=True)).data[0]
         return ce_loss_, mse_loss_, state_, x_hat.data
 
     data_time = 0
@@ -244,7 +244,7 @@ def validate(val_loader, model, loss_fun):
         ce_loss = nll(idx, V(y[0])) * args.lambda_
         total_loss['mse'] += mse_loss.data[0]
         total_loss['ce'] += ce_loss.data[0]
-        total_loss['rpl'] += mse(x_hat, V(x[0])).data[0]
+        total_loss['rpl'] += mse(x_hat, V(x[0], volatile=True)).data[0]
         x, y = next_x, next_y
     validate.state = state  # preserve state across epochs
 
