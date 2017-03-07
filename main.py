@@ -148,10 +148,10 @@ def main():
 
 
 def selective_zero(s, new):
-    for b, reset in enumerate(new):
-        if reset:
-            for state_layer in s:
-                state_layer.data[b].zero_()
+    if new.any():  # if at least one video changed
+        b = new.nonzero().squeeze(1)  # get the list of indices
+        for layer in range(len(s)):  # for every layer having a state
+            s[layer] = s[layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
 
 
 def train(train_loader, model, loss_fun, optimiser, epoch):
