@@ -143,8 +143,8 @@ def main():
               format(elapsed_time, val_loss['mse'] * 1e3, val_loss['ce'], val_loss['rpl'] * 1e3))
         print(80 * '-')
 
-    if args.save != '':
-        torch.save(model, args.save)
+        if args.save != '':
+            torch.save(model, args.save)
 
 
 def selective_zero(s, new):
