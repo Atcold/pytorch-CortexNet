@@ -1,5 +1,7 @@
 import torch  # if torch is not imported BEFORE pyplot you get a FUCKING segmentation fault
 from matplotlib import pyplot as plt
+from os.path import isdir, join
+from os import mkdir
 
 
 def _hist_show(a, k):
@@ -11,6 +13,20 @@ def _hist_show(a, k):
 
 
 def show_four(x, next_x, x_hat, fig):
+    """
+    Saves/overwrites a PDF named fig.pdf with x, next_x, x_hat histogram and x_hat
+
+    :param x: x[t]
+    :type x: torch.FloatTensor
+    :param next_x: x[t + 1]
+    :type next_x: torch.FloatTensor
+    :param x_hat: ~x[t + 1]
+    :type x_hat: torch.FloatTensor
+    :param fig: figure number
+    :type fig: int
+    :return: nothing
+    :rtype: None
+    """
     f = plt.figure(fig)
     plt.clf()
     _sub(x, 1)
@@ -24,7 +40,25 @@ def show_four(x, next_x, x_hat, fig):
     f.savefig(str(fig) + '.pdf')
 
 
+# Setup output folder for figures collection
+pdf_path = 'PDFs'
+if isdir(pdf_path):
+    print('Folder "{}" already existent. Exiting.'.format(pdf_path))
+    exit()
+mkdir(pdf_path)
+
+
 def show_ten(x, x_hat):
+    """
+    First two rows 10 ~x[t + 1], second two rows 10 x[t]
+
+    :param x: x[t]
+    :type x: torch.FloatTensor
+    :param x_hat: ~x[t + 1]
+    :type x_hat: torch.FloatTensor
+    :return: nothing
+    :rtype: None
+    """
     if show_ten.c % 10 == 0: show_ten.f = plt.figure()
     plt.figure(show_ten.f.number)
     plt.subplot(4, 5, 1 + show_ten.c % 10)
@@ -33,7 +67,7 @@ def show_ten(x, x_hat):
     _img_show(x, y0=-.16, s=8)
     show_ten.c += 1
     plt.subplots_adjust(left=0, bottom=0.02, right=1, top=1, wspace=0, hspace=.12)
-    if show_ten.c % 10 == 0: show_ten.f.savefig(str(show_ten.c // 10) + '_10.pdf')
+    if show_ten.c % 10 == 0: show_ten.f.savefig(join(pdf_path, str(show_ten.c // 10) + '_10.pdf'))
 show_ten.c = 0
 
 
