@@ -134,6 +134,7 @@ def main():
 
     # Loop over epochs
     for epoch in range(0, args.epochs):
+        adjust_learning_rate(optimiser, epoch)
         epoch_start_time = time.time()
         train(train_loader, model, (mse, nll), optimiser, epoch)
         print(80 * '-', '| end of epoch {:3d} |'.format(epoch + 1), sep='\n', end=' ')
@@ -145,6 +146,13 @@ def main():
 
         if args.save != '':
             torch.save(model, args.save)
+
+
+def adjust_learning_rate(opt, epoch):
+    """Sets the learning rate to the initial LR decayed by 10 every 3 epochs"""
+    lr = args.lr * (0.1 ** (epoch // 3))
+    for param_group in opt.param_groups:
+        param_group['lr'] = lr
 
 
 def selective_zero(s, new):
@@ -212,9 +220,10 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
             for k in total_loss: total_loss[k] /= args.log_interval * args.big_t
             avg_batch_time = batch_time * 1e3 / args.log_interval
             avg_data_time = data_time * 1e3 / args.log_interval
-            print('| epoch {:3d} | {:4d}/{:4d} batches | lr {:02.2f} |'
+            lr = optimiser.param_groups[0]['lr']  # assumes len(param_groups) == 1
+            print('| epoch {:3d} | {:4d}/{:4d} batches | lr {:.3f} |'
                   ' ms/batch {:7.2f} | ms/data {:7.2f} | mMSE {:5.2f} | CE {:5.2f} | rpl mMSE {:5.2f}'.
-                  format(epoch + 1, batch_nb + 1, len(train_loader), args.lr, avg_batch_time, avg_data_time,
+                  format(epoch + 1, batch_nb + 1, len(train_loader), lr, avg_batch_time, avg_data_time,
                          total_loss['mse'] * 1e3, total_loss['ce'], total_loss['rpl'] * 1e3))
             for k in total_loss: total_loss[k] = 0  # zero the losses
             batch_time = 0
