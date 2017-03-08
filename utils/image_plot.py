@@ -41,14 +41,14 @@ def show_four(x, next_x, x_hat, fig):
 
 
 # Setup output folder for figures collection
-pdf_path = 'PDFs'
-if isdir(pdf_path):
-    print('Folder "{}" already existent. Exiting.'.format(pdf_path))
-    exit()
-mkdir(pdf_path)
+def _show_ten_setup(pdf_path):
+    if isdir(pdf_path):
+        print('Folder "{}" already existent. Exiting.'.format(pdf_path))
+        exit()
+    mkdir(pdf_path)
 
 
-def show_ten(x, x_hat):
+def show_ten(x, x_hat, pdf_path='PDFs'):
     """
     First two rows 10 ~x[t + 1], second two rows 10 x[t]
 
@@ -56,9 +56,12 @@ def show_ten(x, x_hat):
     :type x: torch.FloatTensor
     :param x_hat: ~x[t + 1]
     :type x_hat: torch.FloatTensor
+    :param pdf_path: saving path
+    :type pdf_path: str
     :return: nothing
     :rtype: None
     """
+    if show_ten.c == 0 and pdf_path: _show_ten_setup(pdf_path)
     if show_ten.c % 10 == 0: show_ten.f = plt.figure()
     plt.figure(show_ten.f.number)
     plt.subplot(4, 5, 1 + show_ten.c % 10)
@@ -94,7 +97,7 @@ def _test_4():
 
 def _test_10():
     img = _test_setup()
-    for i in range(20): show_ten(img, -img)
+    for i in range(20): show_ten(img, -img, '')
 
 
 def _test_setup():
