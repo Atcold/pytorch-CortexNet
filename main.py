@@ -35,8 +35,11 @@ _('--save', type=str, default='model.pth.tar', help='path to save the final mode
 _('--cuda', action='store_true', help='use CUDA')
 _('--view', type=int, default=tuple(), help='samples to view at the end of every log-interval batches', metavar='V')
 _('--show-x_hat', action='store_true', help='show x_hat')
+_('--lr-decay', type=float, default=None, nargs=2, metavar=('D', 'E'),
+  help='decay of D (e.g. 3.16, 10) times, every E (e.g. 3) epochs')
 args = parser.parse_args()
 args.size = tuple(args.size)  # cast to tuple
+if args.lr_decay: args.lr_decay = tuple(args.lr_decay)
 if type(args.view) is int: args.view = (args.view,)  # cast to tuple
 
 # Print current options
@@ -134,7 +137,7 @@ def main():
 
     # Loop over epochs
     for epoch in range(0, args.epochs):
-        adjust_learning_rate(optimiser, epoch)
+        if args.lr_decay: adjust_learning_rate(optimiser, epoch)
         epoch_start_time = time.time()
         train(train_loader, model, (mse, nll), optimiser, epoch)
         print(80 * '-', '| end of epoch {:3d} |'.format(epoch + 1), sep='\n', end=' ')
@@ -149,8 +152,9 @@ def main():
 
 
 def adjust_learning_rate(opt, epoch):
-    """Sets the learning rate to the initial LR decayed by 10 every 3 epochs"""
-    lr = args.lr * (0.1 ** (epoch // 3))
+    """Sets the learning rate to the initial LR decayed by D every E epochs"""
+    d, e = args.lr_decay
+    lr = args.lr * (d ** -(epoch // e))
     for param_group in opt.param_groups:
         param_group['lr'] = lr
 
