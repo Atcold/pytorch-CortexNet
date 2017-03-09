@@ -20,3 +20,8 @@ done
 ```
 
 `delay` is expressed in `10`ms.
+
+## Plotting loss functions
+
+To plot the (*MSE*, *CE* and *rpl MSE*) cost functions interactively while training run `./show_error.plt -i`.
+To statically plot them, after training, run `./show_error.plt`.
