@@ -78,8 +78,8 @@ class Model01(nn.Module):
         for layer in reversed(range(0, self.hidden_layers)):  # connect generative blocks
             x = getattr(self, 'G_' + str(layer + 1))(x, activation_sizes[layer])
             if layer:
-                x += residuals[layer - 1]
                 state[layer - 1] = x
+                x += residuals[layer - 1]
             x = f.relu(x)
             x = getattr(self, 'BN_G_' + str(layer + 1))(x)
         x_mean = self.average(residuals[-1])
