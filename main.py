@@ -106,6 +106,8 @@ def main():
     # Build the model
     if args.model == 'model_01':
         from model.Model01 import Model01 as Model
+    elif args.model == 'model_02':
+        from model.Model02 import Model02 as Model
     else:
         print('\n{:#^80}\n'.format(' Please select a valid model '))
         exit()
@@ -143,7 +145,7 @@ def main():
         print(80 * '-', '| end of epoch {:3d} |'.format(epoch + 1), sep='\n', end=' ')
         val_loss = validate(val_loader, model, (mse, nll))
         elapsed_time = str(timedelta(seconds=int(time.time() - epoch_start_time)))  # HH:MM:SS time format
-        print('time: {} | mMSE {:5.2f} | CE {:5.2f} | rpl mMSE {:5.2f}'.
+        print('time: {} | mMSE {:.2e} | CE {:.2e} | rpl mMSE {:.2e}'.
               format(elapsed_time, val_loss['mse'] * 1e3, val_loss['ce'], val_loss['rpl'] * 1e3))
         print(80 * '-')
 
@@ -226,7 +228,7 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
             avg_data_time = data_time * 1e3 / args.log_interval
             lr = optimiser.param_groups[0]['lr']  # assumes len(param_groups) == 1
             print('| epoch {:3d} | {:4d}/{:4d} batches | lr {:.3f} |'
-                  ' ms/batch {:7.2f} | ms/data {:7.2f} | mMSE {:5.2f} | CE {:5.2f} | rpl mMSE {:5.2f}'.
+                  ' ms/batch {:7.2f} | ms/data {:7.2f} | mMSE {:.2e} | CE {:.2e} | rpl mMSE {:.2e}'.
                   format(epoch + 1, batch_nb + 1, len(train_loader), lr, avg_batch_time, avg_data_time,
                          total_loss['mse'] * 1e3, total_loss['ce'], total_loss['rpl'] * 1e3))
             for k in total_loss: total_loss[k] = 0  # zero the losses
