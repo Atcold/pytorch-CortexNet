@@ -168,6 +168,12 @@ def selective_zero(s, new):
             s[layer] = s[layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
 
 
+def selective_match(x_hat, x, new):
+    if new.any():  # if at least one video changed
+        b = new.nonzero().squeeze(1)  # get the list of indices
+        for bb in b: x_hat[bb].copy_(x[bb])  # force the output to be the expected output
+
+
 def train(train_loader, model, loss_fun, optimiser, epoch):
     print('Training epoch', epoch + 1)
     model.train()  # set model in train mode
@@ -175,7 +181,12 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
     mse, nll = loss_fun
 
     def compute_loss(x_, next_x, y_, state_):
+        if not hasattr(compute_loss, 'mismatch'): compute_loss.mismatch = y_.byte().fill_(1)  # ignore first prediction
+        selective_zero(state, mismatch)  # no state from the past
         (x_hat, state_), (_, idx_) = model(V(x_), state_)
+        selective_zero(state, mismatch)  # no state to the future
+        selective_match(x_hat.data, next_x, mismatch + compute_loss.mismatch)  # last frame or first frame
+        compute_loss.mismatch = mismatch  # last frame <- first frame
         mse_loss_ = mse(x_hat, V(next_x))
         ce_loss_ = nll(idx_, V(y_))
         total_loss['mse'] += mse_loss_.data[0]
@@ -198,11 +209,11 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         loss = 0
         # BTT loop
         if from_past:
-            selective_zero(state, y[0] != from_past[1])
+            mismatch = y[0] != from_past[1]
             ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state)
             loss += mse_loss + ce_loss * args.lambda_
         for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
-            selective_zero(state, y[t + 1] != y[t])
+            mismatch = y[t + 1] != y[t]
             ce_loss, mse_loss, state, x_hat_data = compute_loss(x[t], x[t + 1], y[t], state)
             loss += mse_loss + ce_loss * args.lambda_
 
@@ -248,13 +259,18 @@ def validate(val_loader, model, loss_fun):
         x = x.cuda(async=True)
         y = y.cuda(async=True)
     if not hasattr(validate, 'state'): validate.state = None  # init state attribute
+    if not hasattr(validate, 'mismatch'): validate.mismatch = y.byte().fill_(1)  # ignore first prediction ever
     state = validate.state
     for (next_x, next_y) in batches:
         if args.cuda:
             next_x = next_x.cuda(async=True)
             next_y = next_y.cuda(async=True)
-        selective_zero(state, next_y[0] != y[0])
+        mismatch = next_y[0] != y[0]
+        selective_zero(state, mismatch)  # no state from the past
         (x_hat, state), (_, idx) = model(V(x[0], volatile=True), state)  # do not compute graph (volatile)
+        selective_zero(state, mismatch)  # no state to the future
+        selective_match(x_hat.data, next_x[0], mismatch + validate.mismatch)  # last frame or first frame
+        validate.mismatch = mismatch  # last frame <- first frame
         mse_loss = mse(x_hat, V(next_x[0]))
         ce_loss = nll(idx, V(y[0])) * args.lambda_
         total_loss['mse'] += mse_loss.data[0]
