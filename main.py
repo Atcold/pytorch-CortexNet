@@ -181,12 +181,12 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
     mse, nll = loss_fun
 
     def compute_loss(x_, next_x, y_, state_):
-        if not hasattr(compute_loss, 'mismatch'): compute_loss.mismatch = y_.byte().fill_(1)  # ignore first prediction
+        nonlocal previous_mismatch  # write access to variables of the enclosing function
         selective_zero(state, mismatch)  # no state from the past
         (x_hat, state_), (_, idx_) = model(V(x_), state_)
         selective_zero(state, mismatch)  # no state to the future
-        selective_match(x_hat.data, next_x, mismatch + compute_loss.mismatch)  # last frame or first frame
-        compute_loss.mismatch = mismatch  # last frame <- first frame
+        selective_match(x_hat.data, next_x, mismatch + previous_mismatch)  # last frame or first frame
+        previous_mismatch = mismatch  # last frame <- first frame
         mse_loss_ = mse(x_hat, V(next_x))
         ce_loss_ = nll(idx_, V(y_))
         total_loss['mse'] += mse_loss_.data[0]
@@ -197,9 +197,10 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
     data_time = 0
     batch_time = 0
     end_time = time.time()
-    if not hasattr(train, 'state'): train.state = None  # init state attribute
-    state = train.state
-    from_past = None
+    state = None  # reset state at the beginning of a new epoch
+    from_past = None  # performs only T - 1 steps for the first temporal batch
+    previous_mismatch = torch.ByteTensor(args.batch_size).fill_(1)  # ignore first prediction
+    if args.cuda: previous_mismatch = previous_mismatch.cuda()
     for batch_nb, (x, y) in enumerate(train_loader):
         data_time += time.time() - end_time
         if args.cuda:
@@ -245,7 +246,6 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
             for k in total_loss: total_loss[k] = 0  # zero the losses
             batch_time = 0
             data_time = 0
-    train.state = state  # preserve state across epochs
 
 
 def validate(val_loader, model, loss_fun):
@@ -258,9 +258,8 @@ def validate(val_loader, model, loss_fun):
     if args.cuda:
         x = x.cuda(async=True)
         y = y.cuda(async=True)
-    if not hasattr(validate, 'state'): validate.state = None  # init state attribute
-    if not hasattr(validate, 'mismatch'): validate.mismatch = y.byte().fill_(1)  # ignore first prediction ever
-    state = validate.state
+    previous_mismatch = y[0].byte().fill_(1)  # ignore first prediction
+    state = None  # reset state at the beginning of a new epoch
     for (next_x, next_y) in batches:
         if args.cuda:
             next_x = next_x.cuda(async=True)
@@ -269,15 +268,14 @@ def validate(val_loader, model, loss_fun):
         selective_zero(state, mismatch)  # no state from the past
         (x_hat, state), (_, idx) = model(V(x[0], volatile=True), state)  # do not compute graph (volatile)
         selective_zero(state, mismatch)  # no state to the future
-        selective_match(x_hat.data, next_x[0], mismatch + validate.mismatch)  # last frame or first frame
-        validate.mismatch = mismatch  # last frame <- first frame
+        selective_match(x_hat.data, next_x[0], mismatch + previous_mismatch)  # last frame or first frame
+        previous_mismatch = mismatch  # last frame <- first frame
         mse_loss = mse(x_hat, V(next_x[0]))
         ce_loss = nll(idx, V(y[0])) * args.lambda_
         total_loss['mse'] += mse_loss.data[0]
         total_loss['ce'] += ce_loss.data[0]
         total_loss['rpl'] += mse(x_hat, V(x[0], volatile=True)).data[0]
         x, y = next_x, next_y
-    validate.state = state  # preserve state across epochs
 
     for k in total_loss: total_loss[k] /= (len(val_loader) - 1)  # average out
     return total_loss
