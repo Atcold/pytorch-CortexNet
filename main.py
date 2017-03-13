@@ -108,6 +108,8 @@ def main():
         from model.Model01 import Model01 as Model
     elif args.model == 'model_02':
         from model.Model02 import Model02 as Model
+    elif args.model == 'model_02_rg':
+        from model.Model02 import Model02RG as Model
     else:
         print('\n{:#^80}\n'.format(' Please select a valid model '))
         exit()
@@ -164,8 +166,14 @@ def adjust_learning_rate(opt, epoch):
 def selective_zero(s, new):
     if new.any():  # if at least one video changed
         b = new.nonzero().squeeze(1)  # get the list of indices
-        for layer in range(len(s)):  # for every layer having a state
-            s[layer] = s[layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
+        if isinstance(s[0], list):  # recurrent G
+            for layer in range(len(s[0])):  # for every layer having a state
+                s[0][layer] = s[0][layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
+            for layer in range(len(s[1])):  # for every layer having a state
+                s[1][layer] = s[1][layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
+        else:  # simple convolutive G
+            for layer in range(len(s)):  # for every layer having a state
+                s[layer] = s[layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
 
 
 def selective_match(x_hat, x, new):
