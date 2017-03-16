@@ -8,6 +8,7 @@
       <w>cuda</w>
       <w>fromarray</w>
       <w>intra</w>
+      <w>logits</w>
       <w>lstm</w>
       <w>optim</w>
       <w>prednet</w>

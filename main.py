@@ -121,10 +121,8 @@ def main():
     print('Create a MSE and balanced NLL criterions')
     mse = nn.MSELoss()
 
-    # balance classes based on frames per video; default balancing weight is 1.0f
-    w = torch.Tensor(train_data.frames_per_video)
-    w.div_(w.mean()).pow_(-1)
-    nll = nn.CrossEntropyLoss(w)
+    # independent CE computation
+    nll = nn.CrossEntropyLoss(size_average=False)
 
     if args.cuda:
         model.cuda()
@@ -171,7 +169,7 @@ def selective_zero(s, new):
                 s[0][layer] = s[0][layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
             for layer in range(len(s[1])):  # for every layer having a state
                 s[1][layer] = s[1][layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
-        else:  # simple convolutive G
+        else:  # simple convolutional G
             for layer in range(len(s)):  # for every layer having a state
                 s[layer] = s[layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
 
@@ -182,10 +180,18 @@ def selective_match(x_hat, x, new):
         for bb in b: x_hat[bb].copy_(x[bb])  # force the output to be the expected output
 
 
+def selective_cross_entropy(logits, y, new, loss, count):
+    if not new.any():
+        return V(logits.data.new(1).zero_())  # returns a variable, so we don't care about what happened here
+    b = new.nonzero().squeeze(1)  # get the list of indices
+    count['ce_count'] += len(b)
+    return loss(logits.index_select(0, V(b)), y.index_select(0, V(b)))  # performs loss for selected indices only
+
+
 def train(train_loader, model, loss_fun, optimiser, epoch):
     print('Training epoch', epoch + 1)
     model.train()  # set model in train mode
-    total_loss = {'mse': 0, 'ce': 0, 'rpl': 0}
+    total_loss = {'mse': 0, 'ce': 0, 'ce_count': 0, 'rpl': 0}
     mse, nll = loss_fun
 
     def compute_loss(x_, next_x, y_, state_):
@@ -196,8 +202,8 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         selective_match(x_hat.data, next_x, mismatch + previous_mismatch)  # last frame or first frame
         previous_mismatch = mismatch  # last frame <- first frame
         mse_loss_ = mse(x_hat, V(next_x))
-        ce_loss_ = nll(idx_, V(y_))
         total_loss['mse'] += mse_loss_.data[0]
+        ce_loss_ = selective_cross_entropy(idx_, V(y_), mismatch, nll, total_loss)
         total_loss['ce'] += ce_loss_.data[0]
         total_loss['rpl'] += mse(x_hat, V(x_, volatile=True)).data[0]
         return ce_loss_, mse_loss_, state_, x_hat.data
@@ -243,7 +249,9 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
                 for f in args.view:
                     show_four(x[t][f], x[t + 1][f], x_hat_data[f], f + 1)
                     if args.show_x_hat: show_ten(x[t][f], x_hat_data[f])
-            for k in total_loss: total_loss[k] /= args.log_interval * args.big_t
+            total_loss['mse'] /= args.log_interval * args.big_t
+            total_loss['rpl'] /= args.log_interval * args.big_t
+            if total_loss['ce_count']: total_loss['ce'] /= total_loss['ce_count']
             avg_batch_time = batch_time * 1e3 / args.log_interval
             avg_data_time = data_time * 1e3 / args.log_interval
             lr = optimiser.param_groups[0]['lr']  # assumes len(param_groups) == 1
@@ -258,7 +266,7 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
 
 def validate(val_loader, model, loss_fun):
     model.eval()  # set model in evaluation mode
-    total_loss = {'mse': 0, 'ce': 0, 'rpl': 0}
+    total_loss = {'mse': 0, 'ce': 0, 'ce_count': 0, 'rpl': 0}
     mse, nll = loss_fun
     batches = iter(val_loader)
 
@@ -279,11 +287,14 @@ def validate(val_loader, model, loss_fun):
         selective_match(x_hat.data, next_x[0], mismatch + previous_mismatch)  # last frame or first frame
         previous_mismatch = mismatch  # last frame <- first frame
         total_loss['mse'] += mse(x_hat, V(next_x[0])).data[0]
-        total_loss['ce'] += nll(idx, V(y[0])).data[0]
+        ce_loss = selective_cross_entropy(idx, V(y[0]), mismatch, nll, total_loss)
+        total_loss['ce'] += ce_loss.data[0]
         total_loss['rpl'] += mse(x_hat, V(x[0])).data[0]
         x, y = next_x, next_y
 
-    for k in total_loss: total_loss[k] /= (len(val_loader) - 1)  # average out
+    total_loss['mse'] /= len(val_loader)  # average out
+    total_loss['rpl'] /= len(val_loader)  # average out
+    total_loss['ce'] /= total_loss['ce_count']  # average out
     return total_loss
 
 
