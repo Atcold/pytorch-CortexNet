@@ -278,11 +278,9 @@ def validate(val_loader, model, loss_fun):
         selective_zero(state, mismatch)  # no state to the future
         selective_match(x_hat.data, next_x[0], mismatch + previous_mismatch)  # last frame or first frame
         previous_mismatch = mismatch  # last frame <- first frame
-        mse_loss = mse(x_hat, V(next_x[0]))
-        ce_loss = nll(idx, V(y[0])) * args.lambda_
-        total_loss['mse'] += mse_loss.data[0]
-        total_loss['ce'] += ce_loss.data[0]
-        total_loss['rpl'] += mse(x_hat, V(x[0], volatile=True)).data[0]
+        total_loss['mse'] += mse(x_hat, V(next_x[0])).data[0]
+        total_loss['ce'] += nll(idx, V(y[0])).data[0]
+        total_loss['rpl'] += mse(x_hat, V(x[0])).data[0]
         x, y = next_x, next_y
 
     for k in total_loss: total_loss[k] /= (len(val_loader) - 1)  # average out
