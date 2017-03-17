@@ -3,6 +3,9 @@
 
 # Run it as
 # ./update_experiments.sh
+# ./update_experiments.sh -q  # quiet
+
+if [ "$1" != "-q" ]; then verbose="--verbose"; fi
 
 local=$(hostname)
 case $local in
@@ -11,24 +14,30 @@ case $local in
     *)      echo "Something's wrong"; exit -1;;
 esac
 
-echo; printf "%.s#" {1..80}; echo
-echo -n "Getting experiments from $remote to $local"
-echo; printf "%.s#" {1..80}; echo; echo
+# Get experimental data
+if [ -n "$verbose" ]; then
+    echo; printf "%.s#" {1..80}; echo
+    echo -n "Getting experiments from $remote to $local"
+    echo; printf "%.s#" {1..80}; echo; echo
+fi
 rsync \
     --update \
     --archive \
-    --verbose \
+    $verbose \
     --human-readable \
     $remote:MatchNet/results/ \
     ../results
 
-echo; printf "%.s#" {1..80}; echo
-echo -n "Sending experiments to $remote from $local"
-echo; printf "%.s#" {1..80}; echo; echo
+# Send experimental data
+if [ -n "$verbose" ]; then
+    echo; printf "%.s#" {1..80}; echo
+    echo -n "Sending experiments to $remote from $local"
+    echo; printf "%.s#" {1..80}; echo; echo
+fi
 rsync \
     --update \
     --archive \
-    --verbose \
+    $verbose \
     --human-readable \
     ../results/ \
     $remote:MatchNet/results
