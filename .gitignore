@@ -19,3 +19,4 @@ __pycache__
 # Remove experiments
 last
 results
+data/processed-data
