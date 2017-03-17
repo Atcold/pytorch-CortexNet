@@ -20,4 +20,4 @@ ln -snf $dst_path last
 ls -l --color=always last | awk -F"$USER" '{print $3}'
 
 echo " > Previously you've used the following options"
-echo "   python -u main.py $old_CLI | tee last/train.log"
+echo "   CUDA_VISIBLE_DEVICES=n python -u main.py $old_CLI | tee last/train.log"
