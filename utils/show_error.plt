@@ -23,12 +23,14 @@ set ylabel "mMSE"
 set y2label "CE"
 set y2tics
 plot \
-    "< awk '/data/{print $18,$21,$25}' ../last/train.log" \
+    "< awk '/data/{print $18,$21,$25,$29}' ../last/train.log" \
     u 0:1 w lines lw 2 title "MSE", \
+    "" \
+    u 0:3 w lines lw 2 title "rpl MSE", \
     "" \
     u 0:2 w lines lw 2 title "CE" axis x1y2, \
     "" \
-    u 0:3 w lines lw 2 title "rpl MSE"
+    u 0:4 w lines lw 2 title "per CE" axis x1y2
 
 if (ARG1 ne '-i') {
     pause -1  # just hang in there

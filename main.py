@@ -25,7 +25,8 @@ _('--spatial-size', type=int, default=(256, 256), nargs=2, help='frame cropping 
 _('--lr', type=float, default=0.1, help='initial learning rate')
 _('--momentum', type=float, default=0.9, metavar='M', help='momentum')
 _('--weight-decay', type=float, default=1e-4, metavar='W', help='weight decay')
-_('--lambda', type=float, default=0.1, help='CE stabiliser multiplier', dest='lambda_', metavar='λ')
+_('--lambda', type=float, default=0.1, help='final CE stabiliser multiplier', dest='lambda_', metavar='λ')
+_('--pi', default='λ', help='periodical CE stabiliser multiplier', dest='pi', metavar='π')
 _('--epochs', type=int, default=6, help='upper epoch limit')
 _('--batch-size', type=int, default=20, metavar='B', help='batch size')
 _('--big-t', type=int, default=20, help='sequence length', metavar='T')
@@ -41,6 +42,7 @@ args = parser.parse_args()
 args.size = tuple(args.size)  # cast to tuple
 if args.lr_decay: args.lr_decay = tuple(args.lr_decay)
 if type(args.view) is int: args.view = (args.view,)  # cast to tuple
+args.pi = args.lambda_ if args.pi == 'λ' else float(args.pi)
 
 # Print current options
 print('CLI arguments:', ' '.join(argv[1:]))
@@ -122,12 +124,21 @@ def main():
     mse = nn.MSELoss()
 
     # independent CE computation
-    nll = nn.CrossEntropyLoss(size_average=False)
+    nll_final = nn.CrossEntropyLoss(size_average=False)
+    # balance classes based on frames per video; default balancing weight is 1.0f
+    w = torch.Tensor(train_data.frames_per_video)
+    w.div_(w.mean()).pow_(-1)
+    nll_train = nn.CrossEntropyLoss(w)
+    w = torch.Tensor(val_data.frames_per_video)
+    w.div_(w.mean()).pow_(-1)
+    nll_val = nn.CrossEntropyLoss(w)
 
     if args.cuda:
         model.cuda()
         mse.cuda()
-        nll.cuda()
+        nll_final.cuda()
+        nll_train.cuda()
+        nll_val.cuda()
 
     print('Instantiate a SGD optimiser')
     optimiser = optim.SGD(
@@ -141,12 +152,12 @@ def main():
     for epoch in range(0, args.epochs):
         if args.lr_decay: adjust_learning_rate(optimiser, epoch)
         epoch_start_time = time.time()
-        train(train_loader, model, (mse, nll), optimiser, epoch)
+        train(train_loader, model, (mse, nll_final, nll_train), optimiser, epoch)
         print(80 * '-', '| end of epoch {:3d} |'.format(epoch + 1), sep='\n', end=' ')
-        val_loss = validate(val_loader, model, (mse, nll))
+        val_loss = validate(val_loader, model, (mse, nll_final, nll_val))
         elapsed_time = str(timedelta(seconds=int(time.time() - epoch_start_time)))  # HH:MM:SS time format
-        print('time: {} | mMSE {:.2e} | CE {:.2e} | rpl mMSE {:.2e}'.
-              format(elapsed_time, val_loss['mse'] * 1e3, val_loss['ce'], val_loss['rpl'] * 1e3))
+        print('time: {} | mMSE {:.2e} | CE {:.2e} | rpl mMSE {:.2e} | per CE {:.2e} |'.
+              format(elapsed_time, val_loss['mse'] * 1e3, val_loss['ce'], val_loss['rpl'] * 1e3, val_loss['per_ce']))
         print(80 * '-')
 
         if args.save != '':
@@ -191,20 +202,23 @@ def selective_cross_entropy(logits, y, new, loss, count):
 def train(train_loader, model, loss_fun, optimiser, epoch):
     print('Training epoch', epoch + 1)
     model.train()  # set model in train mode
-    total_loss = {'mse': 0, 'ce': 0, 'ce_count': 0, 'rpl': 0}
-    mse, nll = loss_fun
+    total_loss = {'mse': 0, 'ce': 0, 'ce_count': 0, 'per_ce': 0, 'rpl': 0}
+    mse, nll_final, nll_periodic = loss_fun
 
-    def compute_loss(x_, next_x, y_, state_):
+    def compute_loss(x_, next_x, y_, state_, periodic=False):
         nonlocal previous_mismatch  # write access to variables of the enclosing function
         selective_zero(state, mismatch)  # no state from the past
-        (x_hat, state_), (_, idx_) = model(V(x_), state_)
+        (x_hat, state_), (_, idx) = model(V(x_), state_)
         selective_zero(state, mismatch)  # no state to the future
         selective_match(x_hat.data, next_x, mismatch + previous_mismatch)  # last frame or first frame
         previous_mismatch = mismatch  # last frame <- first frame
         mse_loss_ = mse(x_hat, V(next_x))
         total_loss['mse'] += mse_loss_.data[0]
-        ce_loss_ = selective_cross_entropy(idx_, V(y_), mismatch, nll, total_loss)
+        ce_loss_ = selective_cross_entropy(idx, V(y_), mismatch, nll_final, total_loss)
         total_loss['ce'] += ce_loss_.data[0]
+        if periodic:
+            ce_loss_ = (ce_loss_, nll_periodic(idx, V(y_)))
+            total_loss['per_ce'] += ce_loss_[1].data[0]
         total_loss['rpl'] += mse(x_hat, V(x_, volatile=True)).data[0]
         return ce_loss_, mse_loss_, state_, x_hat.data
 
@@ -225,8 +239,8 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         # BTT loop
         if from_past:
             mismatch = y[0] != from_past[1]
-            ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state)
-            loss += mse_loss + ce_loss * args.lambda_
+            ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state, periodic=True)
+            loss += mse_loss + ce_loss[0] * args.lambda_ + ce_loss[1] * args.pi
         for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
             mismatch = y[t + 1] != y[t]
             ce_loss, mse_loss, state, x_hat_data = compute_loss(x[t], x[t + 1], y[t], state)
@@ -251,14 +265,15 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
                     if args.show_x_hat: show_ten(x[t][f], x_hat_data[f])
             total_loss['mse'] /= args.log_interval * args.big_t
             total_loss['rpl'] /= args.log_interval * args.big_t
+            total_loss['per_ce'] /= args.log_interval
             if total_loss['ce_count']: total_loss['ce'] /= total_loss['ce_count']
             avg_batch_time = batch_time * 1e3 / args.log_interval
             avg_data_time = data_time * 1e3 / args.log_interval
             lr = optimiser.param_groups[0]['lr']  # assumes len(param_groups) == 1
             print('| epoch {:3d} | {:4d}/{:4d} batches | lr {:.3f} |'
-                  ' ms/batch {:7.2f} | ms/data {:7.2f} | mMSE {:.2e} | CE {:.2e} | rpl mMSE {:.2e}'.
+                  ' ms/batch {:7.2f} | ms/data {:7.2f} | mMSE {:.2e} | CE {:.2e} | rpl mMSE {:.2e} | per CE {:.2e} |'.
                   format(epoch + 1, batch_nb + 1, len(train_loader), lr, avg_batch_time, avg_data_time,
-                         total_loss['mse'] * 1e3, total_loss['ce'], total_loss['rpl'] * 1e3))
+                         total_loss['mse'] * 1e3, total_loss['ce'], total_loss['rpl'] * 1e3, total_loss['per_ce']))
             for k in total_loss: total_loss[k] = 0  # zero the losses
             batch_time = 0
             data_time = 0
@@ -266,17 +281,17 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
 
 def validate(val_loader, model, loss_fun):
     model.eval()  # set model in evaluation mode
-    total_loss = {'mse': 0, 'ce': 0, 'ce_count': 0, 'rpl': 0}
-    mse, nll = loss_fun
-    batches = iter(val_loader)
+    total_loss = {'mse': 0, 'ce': 0, 'ce_count': 0, 'per_ce': 0, 'rpl': 0}
+    mse, nll_final, nll_periodic = loss_fun
+    batches = enumerate(val_loader)
 
-    (x, y) = next(batches)
+    _, (x, y) = next(batches)
     if args.cuda:
         x = x.cuda(async=True)
         y = y.cuda(async=True)
     previous_mismatch = y[0].byte().fill_(1)  # ignore first prediction
     state = None  # reset state at the beginning of a new epoch
-    for (next_x, next_y) in batches:
+    for batch_nb, (next_x, next_y) in batches:
         if args.cuda:
             next_x = next_x.cuda(async=True)
             next_y = next_y.cuda(async=True)
@@ -287,13 +302,15 @@ def validate(val_loader, model, loss_fun):
         selective_match(x_hat.data, next_x[0], mismatch + previous_mismatch)  # last frame or first frame
         previous_mismatch = mismatch  # last frame <- first frame
         total_loss['mse'] += mse(x_hat, V(next_x[0])).data[0]
-        ce_loss = selective_cross_entropy(idx, V(y[0]), mismatch, nll, total_loss)
+        ce_loss = selective_cross_entropy(idx, V(y[0]), mismatch, nll_final, total_loss)
         total_loss['ce'] += ce_loss.data[0]
+        if batch_nb % args.big_t == 0: total_loss['per_ce'] += nll_periodic(idx, V(y[0])).data[0]
         total_loss['rpl'] += mse(x_hat, V(x[0])).data[0]
         x, y = next_x, next_y
 
     total_loss['mse'] /= len(val_loader)  # average out
     total_loss['rpl'] /= len(val_loader)  # average out
+    total_loss['per_ce'] /= len(val_loader) / args.big_t  # average out
     total_loss['ce'] /= total_loss['ce_count']  # average out
     return total_loss
 
