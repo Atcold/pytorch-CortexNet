@@ -172,17 +172,27 @@ def adjust_learning_rate(opt, epoch):
         param_group['lr'] = lr
 
 
-def selective_zero(s, new):
+def selective_zero(s, new, forward=True):
     if new.any():  # if at least one video changed
         b = new.nonzero().squeeze(1)  # get the list of indices
-        if isinstance(s[0], list):  # recurrent G
-            for layer in range(len(s[0])):  # for every layer having a state
-                s[0][layer] = s[0][layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
-            for layer in range(len(s[1])):  # for every layer having a state
-                s[1][layer] = s[1][layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
-        else:  # simple convolutional G
-            for layer in range(len(s)):  # for every layer having a state
-                s[layer] = s[layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
+        if forward:  # no state forward, no grad backward
+            if isinstance(s[0], list):  # recurrent G
+                for layer in range(len(s[0])):  # for every layer having a state
+                    s[0][layer] = s[0][layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
+                for layer in range(len(s[1])):  # for every layer having a state
+                    s[1][layer] = s[1][layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
+            else:  # simple convolutional G
+                for layer in range(len(s)):  # for every layer having a state
+                    s[layer] = s[layer].index_fill(0, V(b), 0)  # mask state, zero selected indices
+        else:  # just no grad backward
+            if isinstance(s[0], list):  # recurrent G
+                for layer in range(len(s[0])):  # for every layer having a state
+                    s[0][layer].register_hook(lambda g: g.index_fill(0, V(b), 0))  # zero selected gradients
+                for layer in range(len(s[1])):  # for every layer having a state
+                    s[1][layer].register_hook(lambda g: g.index_fill(0, V(b), 0))  # zero selected gradients
+            else:  # simple convolutional G
+                for layer in range(len(s)):  # for every layer having a state
+                    s[layer].register_hook(lambda g: g.index_fill(0, V(b), 0))  # zero selected gradients
 
 
 def selective_match(x_hat, x, new):
@@ -207,9 +217,9 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
 
     def compute_loss(x_, next_x, y_, state_, periodic=False):
         nonlocal previous_mismatch  # write access to variables of the enclosing function
-        selective_zero(state, mismatch)  # no state from the past
+        if not periodic: selective_zero(state, mismatch, forward=False)  # no grad to the past
         (x_hat, state_), (_, idx) = model(V(x_), state_)
-        selective_zero(state, mismatch)  # no state to the future
+        selective_zero(state, mismatch)  # no state to the future, no grad from the future
         selective_match(x_hat.data, next_x, mismatch + previous_mismatch)  # last frame or first frame
         previous_mismatch = mismatch  # last frame <- first frame
         mse_loss_ = mse(x_hat, V(next_x))
@@ -296,7 +306,6 @@ def validate(val_loader, model, loss_fun):
             next_x = next_x.cuda(async=True)
             next_y = next_y.cuda(async=True)
         mismatch = next_y[0] != y[0]
-        selective_zero(state, mismatch)  # no state from the past
         (x_hat, state), (_, idx) = model(V(x[0], volatile=True), state)  # do not compute graph (volatile)
         selective_zero(state, mismatch)  # no state to the future
         selective_match(x_hat.data, next_x[0], mismatch + previous_mismatch)  # last frame or first frame
