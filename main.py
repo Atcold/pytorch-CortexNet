@@ -25,6 +25,7 @@ _('--spatial-size', type=int, default=(256, 256), nargs=2, help='frame cropping 
 _('--lr', type=float, default=0.1, help='initial learning rate')
 _('--momentum', type=float, default=0.9, metavar='M', help='momentum')
 _('--weight-decay', type=float, default=1e-4, metavar='W', help='weight decay')
+_('--mu', type=float, default=1, help='MSE multiplier', dest='mu', metavar='μ')
 _('--lambda', type=float, default=0.1, help='final CE stabiliser multiplier', dest='lambda_', metavar='λ')
 _('--pi', default='λ', help='periodical CE stabiliser multiplier', dest='pi', metavar='π')
 _('--epochs', type=int, default=6, help='upper epoch limit')
@@ -250,11 +251,11 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         if from_past:
             mismatch = y[0] != from_past[1]
             ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state, periodic=True)
-            loss += mse_loss + ce_loss[0] * args.lambda_ + ce_loss[1] * args.pi
+            loss += mse_loss * args.mu + ce_loss[0] * args.lambda_ + ce_loss[1] * args.pi
         for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
             mismatch = y[t + 1] != y[t]
             ce_loss, mse_loss, state, x_hat_data = compute_loss(x[t], x[t + 1], y[t], state)
-            loss += mse_loss + ce_loss * args.lambda_
+            loss += mse_loss * args.mu + ce_loss * args.lambda_
 
         # compute gradient and do SGD step
         model.zero_grad()
