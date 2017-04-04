@@ -71,7 +71,7 @@ class VideoCollate:
 class VideoFolder(data.Dataset):
     def __init__(self, root, transform=None, target_transform=None, video_index=False, shuffle=None):
         """
-        Initialise a data.Dataset object for concurrent frame fetching from videos in a directory of folders of videos
+        Initialise a ``data.Dataset`` object for concurrent frame fetching from videos in a directory of folders of videos
 
         :param root: Data directory (train or validation folders path)
         :type root: str
@@ -79,14 +79,16 @@ class VideoFolder(data.Dataset):
         :type transform: object
         :param target_transform: label transformation / mapping
         :type target_transform: object
-        :param video_index: if True, the label will be the video index instead of target class
+        :param video_index: if ``True``, the label will be the video index instead of target class
         :type video_index: bool
-        :param shuffle: None, 'init' or 'always'
+        :param shuffle: ``None``, ``'init'`` or ``'always'``
         :type shuffle: str
         """
         classes, class_to_idx = self._find_classes(root)
         video_paths = self._find_videos(root, classes)
-        videos, frames, frames_per_video = self._make_data_set(root, video_paths, class_to_idx, shuffle == 'init')
+        videos, frames, frames_per_video, frames_per_class = self._make_data_set(
+            root, video_paths, class_to_idx, shuffle == 'init', video_index
+        )
 
         self.root = root
         self.video_paths = video_paths
@@ -94,6 +96,7 @@ class VideoFolder(data.Dataset):
         self.opened_videos = [[] for _ in videos]
         self.frames = frames
         self.frames_per_video = frames_per_video
+        self.frames_per_class = frames_per_class
         self.classes = classes
         self.class_to_idx = class_to_idx
         self.transform = transform
@@ -202,15 +205,16 @@ class VideoFolder(data.Dataset):
         return [join(c, d) for c in classes for d in listdir(join(root, c))]
 
     @staticmethod
-    def _make_data_set(root, video_paths, class_to_idx, init_shuffle):
+    def _make_data_set(root, video_paths, class_to_idx, init_shuffle, video_index):
         def _is_video_file(filename_):
             return any(filename_.endswith(extension) for extension in VIDEO_EXTENSIONS)
 
-        if init_shuffle:
+        if init_shuffle and not video_index:
             list_shuffle(video_paths)  # shuffle
 
         videos = list()
         frames_per_video = list()
+        frames_per_class = [0] * len(class_to_idx)
         frames_counter = 0
         for filename in tqdm(video_paths, ncols=80):
             class_ = filename.split('/')[0]
@@ -220,12 +224,13 @@ class VideoFolder(data.Dataset):
                 start_idx = frames_counter
                 frames = int(video_meta['video'].get('@nb_frames'))
                 frames_per_video.append(frames)
+                frames_per_class[class_to_idx[class_]] += frames
                 frames_counter += frames
                 item = ((frames_counter - 1, start_idx), (filename, class_to_idx[class_]))
                 videos.append(item)
 
         sleep(0.5)  # allows for progress bar completion
-        return videos, frames_counter, frames_per_video
+        return videos, frames_counter, frames_per_video, frames_per_class
 
 
 def _test_video_folder():
