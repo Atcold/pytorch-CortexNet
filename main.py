@@ -218,9 +218,9 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
 
     def compute_loss(x_, next_x, y_, state_, periodic=False):
         nonlocal previous_mismatch  # write access to variables of the enclosing function
-        if not periodic: selective_zero(state, mismatch, forward=False)  # no grad to the past
+        if not periodic and state_: selective_zero(state_, mismatch, forward=False)  # no grad to the past
         (x_hat, state_), (_, idx) = model(V(x_), state_)
-        selective_zero(state, mismatch)  # no state to the future, no grad from the future
+        selective_zero(state_, mismatch)  # no state to the future, no grad from the future
         selective_match(x_hat.data, next_x, mismatch + previous_mismatch)  # last frame or first frame
         previous_mismatch = mismatch  # last frame <- first frame
         mse_loss_ = mse(x_hat, V(next_x))
