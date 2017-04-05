@@ -4,6 +4,27 @@
 # Run it as
 # ./update_experiments.sh
 # ./update_experiments.sh -q  # quiet
+# ./update_experiments.sh -i  # interactively / 5 seconds loop
+
+if [ "$1" == "-i" ]; then
+    function ctrl_c {
+        echo -e "\nExiting."
+        exit 0
+    }
+    trap ctrl_c INT
+    echo -n "Syncing experiments every 5 seconds"
+    while true; do
+        ./update_experiments.sh -q
+        # prints one "." every second for 5 seconds, then removes them
+        for (( i = 0; i < 5; i++ )); do
+            printf "."
+            sleep 1
+        done
+        printf "%.s\b" {1..5}
+        printf "%.s "  {1..5}
+        printf "%.s\b" {1..5}
+    done
+fi
 
 if [ "$1" != "-q" ]; then verbose="--verbose"; fi
 

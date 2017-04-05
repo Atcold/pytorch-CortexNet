@@ -8,8 +8,7 @@
 
 # Alfredo Canziani, Mar 17
 
-# Get most updated experiments
-!./update_experiments.sh -q
+# You need to run ./utils/update_experiments.sh -i
 
 # set white on black theme
 set terminal wxt background rgb "black" noraise
