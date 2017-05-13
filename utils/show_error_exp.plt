@@ -15,18 +15,20 @@ set terminal wxt background rgb "black" noraise
 set xlabel textcolor rgb "white"
 set ylabel textcolor rgb "white"
 set y2label textcolor rgb "white"
+set title textcolor rgb "white"
 set key textcolor rgb "white"
 set border lc rgb 'white'
 set grid lc rgb 'white'
 
 set grid
+set title "Network " . ARG1
 set xlabel "mini batch index / 10"
 set ylabel "mMSE"
 set y2label "CE"
 set y2tics
 if (ARG1 + 0 < 20) {  # "+ 0" conversion string to number
     plot \
-        "< awk '/data/{print $18,$21,$25}' ../results/".ARG1."/train.log" \
+        "< awk '/batches/{print $18,$21,$25}' ../results/".ARG1."/train.log" \
         u 0:1 w lines lw 2 title "MSE", \
         "" \
         u 0:2 w lines lw 2 title "CE" axis x1y2, \
@@ -34,7 +36,7 @@ if (ARG1 + 0 < 20) {  # "+ 0" conversion string to number
         u 0:3 w lines lw 2 title "rpl MSE"
 } else {
     plot \
-        "< awk '/data/{print $18,$21,$25,$29}' ../results/".ARG1."/train.log" \
+        "< awk '/batches/{print $18,$21,$25,$29}' ../results/".ARG1."/train.log" \
         u 0:1 w lines lw 2 title "MSE", \
         "" \
         u 0:3 w lines lw 2 title "rpl MSE", \
