@@ -19,20 +19,21 @@ parser = argparse.ArgumentParser(description='PyTorch MatchNet generative model 
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 _ = parser.add_argument  # define add_argument shortcut
 _('--data', type=str, default='./data/processed-data', help='location of the video data')
-_('--model', type=str, default='model_01', help='type of auto-encoder')
-_('--size', type=int, default=(3, 6, 12), nargs='*', help='number and size of hidden layers', metavar='S')
+_('--model', type=str, default='CortexNet', help='type of auto-encoder')
+_('--mode', type=str, required=True, help='training mode [MatchNet|TempoNet]')
+_('--size', type=int, default=(3, 32, 64, 128, 256), nargs='*', help='number and size of hidden layers', metavar='S')
 _('--spatial-size', type=int, default=(256, 256), nargs=2, help='frame cropping size', metavar=('H', 'W'))
 _('--lr', type=float, default=0.1, help='initial learning rate')
 _('--momentum', type=float, default=0.9, metavar='M', help='momentum')
 _('--weight-decay', type=float, default=1e-4, metavar='W', help='weight decay')
-_('--mu', type=float, default=1, help='MSE multiplier', dest='mu', metavar='μ')
-_('--lambda', type=float, default=0.1, help='final CE stabiliser multiplier', dest='lambda_', metavar='λ')
-_('--pi', default='λ', help='periodical CE stabiliser multiplier', dest='pi', metavar='π')
-_('--epochs', type=int, default=6, help='upper epoch limit')
+_('--mu', type=float, default=1, help='matching MSE multiplier', dest='mu', metavar='μ')
+_('--tau', type=float, default=0.1, help='temporal CE multiplier', dest='tau', metavar='τ')
+_('--pi', default='τ', help='periodical CE multiplier', dest='pi', metavar='π')
+_('--epochs', type=int, default=10, help='upper epoch limit')
 _('--batch-size', type=int, default=20, metavar='B', help='batch size')
-_('--big-t', type=int, default=20, help='sequence length', metavar='T')
+_('--big-t', type=int, default=10, help='sequence length', metavar='T')
 _('--seed', type=int, default=0, help='random seed')
-_('--log-interval', type=int, default=200, metavar='N', help='report interval')
+_('--log-interval', type=int, default=10, metavar='N', help='report interval')
 _('--save', type=str, default='model.pth.tar', help='path to save the final model')
 _('--cuda', action='store_true', help='use CUDA')
 _('--view', type=int, default=tuple(), help='samples to view at the end of every log-interval batches', metavar='V')
@@ -43,7 +44,7 @@ args = parser.parse_args()
 args.size = tuple(args.size)  # cast to tuple
 if args.lr_decay: args.lr_decay = tuple(args.lr_decay)
 if type(args.view) is int: args.view = (args.view,)  # cast to tuple
-args.pi = args.lambda_ if args.pi == 'λ' else float(args.pi)
+args.pi = args.tau if args.pi == 'τ' else float(args.pi)
 
 # Print current options
 print('CLI arguments:', ' '.join(argv[1:]))
@@ -109,7 +110,7 @@ def main():
     # Build the model
     if args.model == 'model_01':
         from model.Model01 import Model01 as Model
-    elif args.model == 'model_02':
+    elif args.model == 'model_02' or args.model == 'CortexNet':
         from model.Model02 import Model02 as Model
     elif args.model == 'model_02_rg':
         from model.Model02 import Model02RG as Model
@@ -251,11 +252,11 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         if from_past:
             mismatch = y[0] != from_past[1]
             ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state, periodic=True)
-            loss += mse_loss * args.mu + ce_loss[0] * args.lambda_ + ce_loss[1] * args.pi
+            loss += mse_loss * args.mu + ce_loss[0] * args.tau + ce_loss[1] * args.pi
         for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
             mismatch = y[t + 1] != y[t]
             ce_loss, mse_loss, state, x_hat_data = compute_loss(x[t], x[t + 1], y[t], state)
-            loss += mse_loss * args.mu + ce_loss * args.lambda_
+            loss += mse_loss * args.mu + ce_loss * args.tau
 
         # compute gradient and do SGD step
         model.zero_grad()
