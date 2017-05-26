@@ -40,6 +40,7 @@ _('--view', type=int, default=tuple(), help='samples to view at the end of every
 _('--show-x_hat', action='store_true', help='show x_hat')
 _('--lr-decay', type=float, default=None, nargs=2, metavar=('D', 'E'),
   help='decay of D (e.g. 3.16, 10) times, every E (e.g. 3) epochs')
+_('--pre-trained', type=str, default='', help='path to pre-trained model', metavar='P')
 args = parser.parse_args()
 args.size = tuple(args.size)  # cast to tuple
 if args.lr_decay: args.lr_decay = tuple(args.lr_decay)
@@ -75,7 +76,10 @@ def main():
         train_data = torch.load(train_data_name)
     else:
         train_path = path.join(args.data, 'train')
-        train_data = VideoFolder(root=train_path, transform=t, video_index=True)
+        if args.mode == 'MatchNet':
+            train_data = VideoFolder(root=train_path, transform=t, video_index=True)
+        elif args.mode == 'TempoNet':
+            train_data = VideoFolder(root=train_path, transform=t, shuffle=True)
         torch.save(train_data, train_data_name)
 
     train_loader = DataLoader(
@@ -94,7 +98,10 @@ def main():
         val_data = torch.load(val_data_name)
     else:
         val_path = path.join(args.data, 'val')
-        val_data = VideoFolder(root=val_path, transform=t, video_index=True)
+        if args.mode == 'MatchNet':
+            val_data = VideoFolder(root=val_path, transform=t, video_index=True)
+        elif args.mode == 'TempoNet':
+            val_data = VideoFolder(root=val_path, transform=t, shuffle='init')
         torch.save(val_data, val_data_name)
 
     val_loader = DataLoader(
@@ -119,8 +126,38 @@ def main():
         exit()
 
     print('Define model')
-    nb_train_videos = len(train_data.videos)
-    model = Model(args.size + (nb_train_videos,), args.spatial_size)
+    if args.mode == 'MatchNet':
+        nb_train_videos = len(train_data.videos)
+        model = Model(args.size + (nb_train_videos,), args.spatial_size)
+    elif args.mode == 'TempoNet':
+        nb_classes = len(train_data.classes)
+        model = Model(args.size + (nb_classes,), args.spatial_size)
+
+    if args.pre_trained:
+        print('Load pre-trained weights')
+        # args.pre_trained = 'model/model02D-33IS/model_best.pth.tar'
+        dict_33 = torch.load(args.pre_trained)['state_dict']
+
+        def load_state_dict(new_model, state_dict):
+            own_state = new_model.state_dict()
+            for name, param in state_dict.items():
+                name = name[19:]  # remove 'module.inner_model.' part
+                if name not in own_state:
+                    raise KeyError('unexpected key "{}" in state_dict'
+                                   .format(name))
+                if name.startswith('stabiliser'):
+                    print('Skipping', name)
+                    continue
+                if isinstance(param, nn.Parameter):
+                    # backwards compatibility for serialized parameters
+                    param = param.data
+                own_state[name].copy_(param)
+
+            missing = set(own_state.keys()) - set([k[19:] for k in state_dict.keys()])
+            if len(missing) > 0:
+                raise KeyError('missing keys in state_dict: "{}"'.format(missing))
+
+        load_state_dict(model, dict_33)
 
     print('Create a MSE and balanced NLL criterions')
     mse = nn.MSELoss()
@@ -128,10 +165,10 @@ def main():
     # independent CE computation
     nll_final = nn.CrossEntropyLoss(size_average=False)
     # balance classes based on frames per video; default balancing weight is 1.0f
-    w = torch.Tensor(train_data.frames_per_video)
+    w = torch.Tensor(train_data.frames_per_video if args.mode == 'MatchNet' else train_data.frames_per_class)
     w.div_(w.mean()).pow_(-1)
     nll_train = nn.CrossEntropyLoss(w)
-    w = torch.Tensor(val_data.frames_per_video)
+    w = torch.Tensor(val_data.frames_per_video if args.mode == 'MatchNet' else val_data.frames_per_class)
     w.div_(w.mean()).pow_(-1)
     nll_val = nn.CrossEntropyLoss(w)
 
@@ -219,7 +256,8 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
 
     def compute_loss(x_, next_x, y_, state_, periodic=False):
         nonlocal previous_mismatch  # write access to variables of the enclosing function
-        if not periodic and state_: selective_zero(state_, mismatch, forward=False)  # no grad to the past
+        if args.mode == 'MatchNet':
+            if not periodic and state_: selective_zero(state_, mismatch, forward=False)  # no grad to the past
         (x_hat, state_), (_, idx) = model(V(x_), state_)
         selective_zero(state_, mismatch)  # no state to the future, no grad from the future
         selective_match(x_hat.data, next_x, mismatch + previous_mismatch)  # last frame or first frame
@@ -249,14 +287,28 @@ def train(train_loader, model, loss_fun, optimiser, epoch):
         state = repackage_state(state)
         loss = 0
         # BTT loop
-        if from_past:
-            mismatch = y[0] != from_past[1]
-            ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state, periodic=True)
-            loss += mse_loss * args.mu + ce_loss[0] * args.tau + ce_loss[1] * args.pi
-        for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
-            mismatch = y[t + 1] != y[t]
-            ce_loss, mse_loss, state, x_hat_data = compute_loss(x[t], x[t + 1], y[t], state)
-            loss += mse_loss * args.mu + ce_loss * args.tau
+        if args.mode == 'MatchNet':
+            if from_past:
+                mismatch = y[0] != from_past[1]
+                ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state, periodic=True)
+                loss += mse_loss * args.mu + ce_loss[0] * args.tau + ce_loss[1] * args.pi
+            for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
+                mismatch = y[t + 1] != y[t]
+                ce_loss, mse_loss, state, x_hat_data = compute_loss(x[t], x[t + 1], y[t], state)
+                loss += mse_loss * args.mu + ce_loss * args.tau
+        elif args.mode == 'TempoNet':
+            if from_past:
+                mismatch = y[0] != from_past[1]
+                ce_loss, mse_loss, state, _ = compute_loss(from_past[0], x[0], from_past[1], state)
+                loss += mse_loss * args.mu + ce_loss * args.tau
+            for t in range(0, min(args.big_t, x.size(0)) - 1):  # first batch we go only T - 1 steps forward / backward
+                mismatch = y[t + 1] != y[t]
+                last = t == min(args.big_t, x.size(0)) - 2
+                ce_loss, mse_loss, state, x_hat_data = compute_loss(x[t], x[t + 1], y[t], state, periodic=last)
+                if not last:
+                    loss += mse_loss * args.mu + ce_loss * args.tau
+                else:
+                    loss += mse_loss * args.mu + ce_loss[0] * args.tau + ce_loss[1] * args.pi
 
         # compute gradient and do SGD step
         model.zero_grad()
@@ -345,5 +397,5 @@ __author__ = "Alfredo Canziani"
 __credits__ = ["Alfredo Canziani"]
 __maintainer__ = "Alfredo Canziani"
 __email__ = "alfredo.canziani@gmail.com"
-__status__ = "Development"  # "Prototype", "Development", or "Production"
+__status__ = "Production"  # "Prototype", "Development", or "Production"
 __date__ = "Feb 17"
