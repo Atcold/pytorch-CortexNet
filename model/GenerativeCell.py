@@ -13,7 +13,7 @@ class GenerativeCell(nn.Module):
 
     def __init__(self, input_size, hidden_size, error_init_size=None):
         """
-        Create a generative cell (bottom_up, r_state) -> error
+        Create a generative cell (error, top_down_state, r_state) -> r_state
 
         :param input_size: {'error': error_size, 'up_state': r_state_size}, r_state_size can be 0
         :param hidden_size: int, shooting dimensionality

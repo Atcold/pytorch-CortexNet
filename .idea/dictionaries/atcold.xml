@@ -12,7 +12,9 @@
       <w>lstm</w>
       <w>optim</w>
       <w>prednet</w>
+      <w>resizes</w>
       <w>sergey</w>
+      <w>subsamples</w>
       <w>tanh</w>
       <w>zagoruyko</w>
     </words>

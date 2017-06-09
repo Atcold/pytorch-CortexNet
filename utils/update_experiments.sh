@@ -4,7 +4,7 @@
 # Run it as
 # ./update_experiments.sh
 # ./update_experiments.sh -q  # quiet
-# ./update_experiments.sh -i  # interactively / 5 seconds loop
+# ./update_experiments.sh -i  # iteratively / 5 seconds loop
 
 if [ "$1" == "-i" ]; then
     function ctrl_c {
