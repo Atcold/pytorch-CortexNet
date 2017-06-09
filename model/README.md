@@ -10,4 +10,4 @@ Three main architectures are currently available:
  - [`Model02.py`](Model02.py): AKA *CortexNet*, additional feed-forward, modulated feed-back. May use:
    - [`RG.py`](RG.py): recurrent generative block ⇒ *Model02G*.
  
- ![Model diagrams](models.svg)
+ ![Model diagrams](https://cdn.rawgit.com/e-lab/pytorch-CortexNet/master/model/models.svg)
