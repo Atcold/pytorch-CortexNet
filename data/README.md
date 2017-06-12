@@ -3,6 +3,7 @@
 This folder contains the following scripts:
 
  - [`add_frame_numbering.sh*`](add_frame_numbering.sh): draws a huge number on each frame on a specific video;
+ - [`dump_data_set.sh*`](dump_data_set.sh): get images from videos for ["traditional training"](https://github.com/pytorch/examples/tree/master/imagenet);
  - [`resize_and_split.sh*`](resize_and_split.sh): see [below](#matchnet-mode);
  - [`resize_and_sample.sh*`](resize_and_sample.sh): see [below](#temponet-mode);
  - [`VideoFolder.py`](VideoFolder.py): *PyTorch* `data.Dataset`'s sub-class for video data loading.
