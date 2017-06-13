@@ -7,6 +7,7 @@ This folder contains the following scripts:
  - [`objectify.sh*`](objectify.sh): convert sampled-data from video-indexed to object-indexed;
  - [`resize_and_split.sh*`](resize_and_split.sh): see [below](#matchnet-mode);
  - [`resize_and_sample.sh*`](resize_and_sample.sh): see [below](#temponet-mode);
+ - [`sample_video.sh*`](sample_video.sh): sample the `<src video>` into `k` time-subsampled `<dst prefix>-` videos;
  - [`VideoFolder.py`](VideoFolder.py): *PyTorch* `data.Dataset`'s sub-class for video data loading.
 
 ## Remove white spaces from file names
