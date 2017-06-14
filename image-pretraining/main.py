@@ -22,11 +22,6 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
-parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
-                    choices=model_names,
-                    help='model architecture: ' +
-                        ' | '.join(model_names) +
-                        ' (default: resnet18)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=90, type=int, metavar='N',
@@ -49,6 +44,8 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
+parser.add_argument('--size', type=int, default=(3, 32, 64, 128, 256, 256, 256), nargs='*',
+                    help='number and size of hidden layers', metavar='S')
 
 best_prec1 = 0
 
@@ -56,92 +53,88 @@ best_prec1 = 0
 def main():
     global args, best_prec1
     args = parser.parse_args()
+    args.size = tuple(args.size)
 
     # create model
-    if args.pretrained:
-        print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
-    else:
-        print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
+    from model.Model02 import Model02 as Model
 
-    if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
-        model.features = torch.nn.DataParallel(model.features)
-        model.cuda()
-    else:
-        model = torch.nn.DataParallel(model).cuda()
+    class Capsule(nn.Module):
 
-    # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
+        def __init__(self):
+            super().__init__()
+            nb_of_classes = 33  # 970 (vid) or 35 (vid obj) or 33 (imgs)
+            self.inner_model = Model(args.size + (nb_of_classes,), (256, 256))
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+        def forward(self, x):
+            (_, _), (_, video_index) = self.inner_model(x, None)
+            return video_index
 
-   # optionally resume from a checkpoint
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume)
-            args.start_epoch = checkpoint['epoch']
-            best_prec1 = checkpoint['best_prec1']
-            model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> loaded checkpoint '{}' (epoch {})"
-                  .format(args.resume, checkpoint['epoch']))
-        else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
+    model = Capsule()
+
+    model = torch.nn.DataParallel(model).cuda()
 
     cudnn.benchmark = True
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+#    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+#                                     std=[0.229, 0.224, 0.225])
 
+    train_data = datasets.ImageFolder(traindir, transforms.Compose([
+            transforms.CenterCrop(256),
+            transforms.ToTensor(),
+        ]))
     train_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(traindir, transforms.Compose([
-            transforms.RandomSizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ])),
+        train_data,
         batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=True)
+        num_workers=args.workers, pin_memory=True
+    )
 
+    val_data = datasets.ImageFolder(valdir, transforms.Compose([transforms.CenterCrop(256), transforms.ToTensor(), ]))
     val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose([
-            transforms.Scale(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ])),
+        val_data,
         batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+        num_workers=args.workers, pin_memory=True
+    )
+
+    # define loss function (criterion) and optimizer
+    class_count = [0] * len(train_data.classes)
+    for i in train_data.imgs: class_count[i[1]] += 1
+    train_crit_weight = torch.Tensor(class_count)
+    train_crit_weight.div_(train_crit_weight.mean()).pow_(-1)
+    train_criterion = nn.CrossEntropyLoss(train_crit_weight).cuda()
+
+    class_count = [0] * len(val_data.classes)
+    for i in val_data.imgs: class_count[i[1]] += 1
+    val_crit_weight = torch.Tensor(class_count)
+    val_crit_weight.div_(val_crit_weight.mean()).pow_(-1)
+    val_criterion = nn.CrossEntropyLoss(val_crit_weight).cuda()
+
+    optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                momentum=args.momentum,
+                                weight_decay=args.weight_decay)
 
     if args.evaluate:
-        validate(val_loader, model, criterion)
+        validate(val_loader, model, val_criterion)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch)
+        train(train_loader, model, train_criterion, optimizer, epoch)
 
         # evaluate on validation set
-        prec1 = validate(val_loader, model, criterion)
+        prec1 = validate(val_loader, model, val_criterion)
 
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
         best_prec1 = max(prec1, best_prec1)
         save_checkpoint({
             'epoch': epoch + 1,
-            'arch': args.arch,
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,
-            'optimizer' : optimizer.state_dict(),
         }, is_best)
 
 

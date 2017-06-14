@@ -1,28 +1,24 @@
 # Image pre-training
 
-Find the original code at [PyTorch's example](https://github.com/pytorch/examples/tree/master/imagenet).
+Find the original code at [PyTorch ImageNet example](https://github.com/pytorch/examples/tree/master/imagenet).  
 This adaptation trains the discriminative branch of CortexNet for TempoNet.
 
 ## Training
 
-To train a model, run `main.py` with the desired model architecture and the path to the ImageNet dataset:
+To train the discriminative branch of CortexNet, run `main.py` with the path to an image data set:
 
 ```bash
-python main.py -a resnet18 [imagenet-folder with train and val folders]
+python main.py <image data path> | tee train.log
 ```
 
-The default learning rate schedule starts at 0.1 and decays by a factor of 10 every 30 epochs. This is appropriate for ResNet and models with batch normalization, but too high for AlexNet and VGG. Use 0.01 as the initial learning rate for AlexNet or VGG:
-
-```bash
-python main.py -a alexnet --lr 0.01 [imagenet-folder with train and val folders]
-```
+The default learning rate schedule starts at 0.1 and decays by a factor of 10 every 30 epochs.
 
 ## Usage
 
 ```
-usage: main.py [-h] [--arch ARCH] [-j N] [--epochs N] [--start-epoch N] [-b N]
-               [--lr LR] [--momentum M] [--weight-decay W] [--print-freq N]
-               [--resume PATH] [-e] [--pretrained]
+usage: main.py [-h] [-j N] [--epochs N] [--start-epoch N] [-b N] [--lr LR]
+               [--momentum M] [--weight-decay W] [--print-freq N]
+               [--resume PATH] [-e] [--pretrained] [--size [S [S ...]]]
                DIR
 
 PyTorch ImageNet Training
@@ -32,10 +28,6 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  --arch ARCH, -a ARCH  model architecture: alexnet | resnet | resnet101 |
-                        resnet152 | resnet18 | resnet34 | resnet50 | vgg |
-                        vgg11 | vgg11_bn | vgg13 | vgg13_bn | vgg16 | vgg16_bn
-                        | vgg19 | vgg19_bn (default: resnet18)
   -j N, --workers N     number of data loading workers (default: 4)
   --epochs N            number of total epochs to run
   --start-epoch N       manual epoch number (useful on restarts)
@@ -49,4 +41,5 @@ optional arguments:
   --resume PATH         path to latest checkpoint (default: none)
   -e, --evaluate        evaluate model on validation set
   --pretrained          use pre-trained model
+  --size [S [S ...]]    number and size of hidden layers
 ```

@@ -8,14 +8,15 @@ Check the [project website](https://engineering.purdue.edu/elab/CortexNet/) for 
 The project consists of the following folders and files:
 
  - [`data/`](data): contains *Bash* scripts and a *Python* class definition inherent video data loading;
+ - [`image-pretraining/`](image-pretraining/): hosts the code for pre-training TempoNet's discriminative branch;
  - [`model/`](model): stores several network architectures, including [*PredNet*](https://coxlab.github.io/prednet/), an additive feedback *Model01*, and a modulatory feedback *Model02* ([*CortexNet*](https://engineering.purdue.edu/elab/CortexNet/));
- - [`notebook/`](notebook): collection of *Jupyter Notebook*s for data exploration and results visualisation (best view with [this](https://userstyles.org/styles/98208/jupyter-notebook-dark-originally-from-ipython) and [this](https://userstyles.org/styles/37035/github-dark) dark styles); 
- - [`utils/`](utils): scripts for 
+ - [`notebook/`](notebook): collection of *Jupyter Notebook*s for data exploration and results visualisation (best view with [this](https://userstyles.org/styles/98208/jupyter-notebook-dark-originally-from-ipython) and [this](https://userstyles.org/styles/37035/github-dark) dark styles);
+ - [`utils/`](utils): scripts for
    - (current or former) training error plotting,
    - experiments `diff`,
    - multi-node synchronisation,
    - generative predictions visualisation,
-   - network architecture graphing;   
+   - network architecture graphing;
  - `results@`: link to the location where experimental results will be saved within 3-digit folders;
  - [`new_experiment.sh*`](new_experiment.sh): creates a new experiment folder, updates `last@`, prints a memo about last used settings;
  - `last@`: symbolic link pointing to a new results sub-directory created by `new_experiment.sh`;
@@ -68,7 +69,7 @@ Therefore, type `CUDA_VISIBLE_DEVICES=n` just before `python ...` in the followi
  + Use [`data/resize_and_split.sh`](data/resize_and_split.sh) to prepare your (video) data for training.
    It resizes videos present in folders of folders (*i.e.* directory of classes) and may split them into training and validation set.
    May also skip short videos and trim longer ones.
-   Check [`data/README.md`](data/README.md) for more details.
+   Check [`data/README.md`](data/README.md#matchnet-mode) for more details.
  + Run the [`main.py`](main.py) script to start training.
    Use `-h` to print the command line interface (CLI) arguments help.
 
@@ -79,16 +80,17 @@ python -u main.py --mode MatchNet <CLI arguments> | tee last/train.log
 ## Train *TempoNet*
 
  + Download *e-VDS35* (*e.g.* `e-VDS35-May17.tar`) from [here](https://engineering.purdue.edu/elab/eVDS/).
+ + Pre-train the forward branch (see [`image-pretraining/`](image-pretraining)) on an image data set (*e.g.* `33-image-set.tar` from [here](https://engineering.purdue.edu/elab/eVDS/));
  + Use [`data/resize_and_sample.sh`](data/resize_and_sample.sh) to prepare your (video) data for training.
    It resizes videos present in folders of folders (*i.e.* directory of classes) and samples them.
    Videos are then distributed across training and validation set.
    May also skip short videos and trim longer ones.
-   Check [`data/README.md`](data/README.md) for more details.
+   Check [`data/README.md`](data/README.md#temponet-mode) for more details.
  + Run the [`main.py`](main.py) script to start training.
    Use `-h` to print the CLI arguments help.
 
 ```bash
-python -u main.py --mode MatchNet <CLI arguments> | tee last/train.log
+python -u main.py --mode TempoNet --pre-trained <path> <CLI args> | tee last/train.log
 ```
 
 ## GPU selection

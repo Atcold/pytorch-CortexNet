@@ -135,7 +135,7 @@ def main():
 
     if args.pre_trained:
         print('Load pre-trained weights')
-        # args.pre_trained = 'model/model02D-33IS/model_best.pth.tar'
+        # args.pre_trained = 'image-pretraining/model02D-33IS/model_best.pth.tar'
         dict_33 = torch.load(args.pre_trained)['state_dict']
 
         def load_state_dict(new_model, state_dict):
