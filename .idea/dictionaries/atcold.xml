@@ -10,6 +10,7 @@
       <w>intra</w>
       <w>logits</w>
       <w>lstm</w>
+      <w>matplotlib</w>
       <w>optim</w>
       <w>prednet</w>
       <w>resizes</w>

@@ -15,9 +15,11 @@ __pycache__
 *.jpg
 *.png
 *.pdf
+*.mp4
+*.svg
+*.pth
 
 # Remove experiments
 last
 results
-data/processed-data
-data/sampled-data
+*backup

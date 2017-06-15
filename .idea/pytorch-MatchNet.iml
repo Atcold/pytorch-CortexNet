@@ -3,6 +3,22 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/data/256min_data_set" />
+      <excludeFolder url="file://$MODULE_DIR$/data/abhi-car" />
+      <excludeFolder url="file://$MODULE_DIR$/data/bme-car" />
+      <excludeFolder url="file://$MODULE_DIR$/data/bme-chair" />
+      <excludeFolder url="file://$MODULE_DIR$/data/data_set" />
+      <excludeFolder url="file://$MODULE_DIR$/data/dumped-object-sampled-data" />
+      <excludeFolder url="file://$MODULE_DIR$/data/dumped-sampled-data" />
+      <excludeFolder url="file://$MODULE_DIR$/data/object-sampled-data" />
+      <excludeFolder url="file://$MODULE_DIR$/data/processed-data" />
+      <excludeFolder url="file://$MODULE_DIR$/data/sampled-data" />
+      <excludeFolder url="file://$MODULE_DIR$/data/small_data_set" />
+      <excludeFolder url="file://$MODULE_DIR$/data_set_backups" />
+      <excludeFolder url="file://$MODULE_DIR$/image-pretraining/model" />
+      <excludeFolder url="file://$MODULE_DIR$/last" />
+      <excludeFolder url="file://$MODULE_DIR$/model/utils" />
+      <excludeFolder url="file://$MODULE_DIR$/notebook" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.5.2 (~/anaconda3/bin/python)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
