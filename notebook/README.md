@@ -22,9 +22,8 @@ I'm releasing them here for reference only, and you are welcome to browse them, 
  - [`frequency_analysis.ipynb`](frequency_analysis.ipynb): explor video temporal-frequency components;
  - [`get_all_embeddings.ipynb`](get_all_embeddings.ipynb): display ResNet18 embeddings and probability *vs.* time;
  - [`get_data_stats.ipynb`](get_data_stats.ipynb): show stats on the e-VDS35 data set;
- - [`model_probing.ipynb`](model_probing.ipynb)
  - [`network_bisection.ipynb`](network_bisection.ipynb): mucking around with PyTorch model graph;
  - [`salient_regions.ipynb`](salient_regions.ipynb): implements and compute salient regions from [bojarski2017explaining](https://arxiv.org/abs/1704.07911);
- - [`stability_analysis.ipynb`](stability_analysis.ipynb)
+ - [`stability_analysis.ipynb`](stability_analysis.ipynb): mucking around with ResNet18 and videos;
  - [`verify_resnet.ipynb`](verify_resnet.ipynb): checks whether I'm capable to use PyTorch's ResNet18;
  - [`plot_conf.py`](plot_conf.py): `matplotlib` shared configuration.
