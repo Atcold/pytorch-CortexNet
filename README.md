@@ -38,6 +38,11 @@ conda update --all
 conda install tqdm
 ```
 
+## IDE
+
+This project has been realised with [*PyCharm*](https://www.jetbrains.com/pycharm/) by *JetBrains* and the [*Vim*](http://www.vim.org/) editor.
+[*Grip*](https://github.com/joeyespo/grip) has been also fundamental for crafting decent documtation locally.
+
 ## Initialise environment
 
 Once you've determined where you'd like to save your experimental results — let's call this directory `<my saving location>` — run the following commands from the project's root directory:
