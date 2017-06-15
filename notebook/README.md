@@ -17,7 +17,7 @@ I used them for data exploration, getting familiar with PyTorch model graphs, an
 They all run, on my system, with the data generated from the experiments.
 I'm releasing them here for reference only, and you are welcome to browse them, even though you might not be able to execute them.
 
- - [`display_loss.ipynb`](display_loss.ipynb)
+ - [`display_loss.ipynb`](display_loss.ipynb): display train and validation losses for every experiment;
  - [`figures_generator.ipynb`](figures_generator.ipynb): generates paper figures and website animations;
  - [`frequency_analysis.ipynb`](frequency_analysis.ipynb)
  - [`get_all_embeddings.ipynb`](get_all_embeddings.ipynb)
