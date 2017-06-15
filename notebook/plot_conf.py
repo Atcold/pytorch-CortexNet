@@ -1,9 +1,6 @@
 # matplotlib and stuff
 import matplotlib.pyplot as plt
 
-# %matplotlib inline  # not from script
-get_ipython().run_line_magic('matplotlib', 'inline')
-
 
 def plt_style(c='k'):
     """
@@ -15,8 +12,12 @@ def plt_style(c='k'):
     import matplotlib as mpl
     from matplotlib import rc
 
-    # configuration for bright background
+    # Reset previous configuration
     mpl.rcParams.update(mpl.rcParamsDefault)
+    # %matplotlib inline  # not from script
+    get_ipython().run_line_magic('matplotlib', 'inline')
+
+    # configuration for bright background
     if c == 'w':
         plt.style.use('bmh')
 
