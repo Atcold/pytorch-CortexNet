@@ -10,7 +10,7 @@ The project consists of the following folders and files:
  - [`data/`](data): contains *Bash* scripts and a *Python* class definition inherent video data loading;
  - [`image-pretraining/`](image-pretraining/): hosts the code for pre-training TempoNet's discriminative branch;
  - [`model/`](model): stores several network architectures, including [*PredNet*](https://coxlab.github.io/prednet/), an additive feedback *Model01*, and a modulatory feedback *Model02* ([*CortexNet*](https://engineering.purdue.edu/elab/CortexNet/));
- - [`notebook/`](notebook): collection of *Jupyter Notebook*s for data exploration and results visualisation (best view with [this](https://userstyles.org/styles/98208/jupyter-notebook-dark-originally-from-ipython) and [this](https://userstyles.org/styles/37035/github-dark) dark styles);
+ - [`notebook/`](notebook): collection of *Jupyter Notebook*s for data exploration and results visualisation;
  - [`utils/`](utils): scripts for
    - (current or former) training error plotting,
    - experiments `diff`,
