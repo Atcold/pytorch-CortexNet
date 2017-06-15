@@ -19,7 +19,7 @@ I'm releasing them here for reference only, and you are welcome to browse them, 
 
  - [`display_loss.ipynb`](display_loss.ipynb): display train and validation losses for every experiment;
  - [`figures_generator.ipynb`](figures_generator.ipynb): generates paper figures and website animations;
- - [`frequency_analysis.ipynb`](frequency_analysis.ipynb)
+ - [`frequency_analysis.ipynb`](frequency_analysis.ipynb): explor video temporal-frequency components;
  - [`get_all_embeddings.ipynb`](get_all_embeddings.ipynb)
  - [`get_data_stats.ipynb`](get_data_stats.ipynb): show stats on the e-VDS35 data set;
  - [`model_probing.ipynb`](model_probing.ipynb)
