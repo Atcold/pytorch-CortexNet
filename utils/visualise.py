@@ -22,11 +22,11 @@ def make_dot(root):
             else:
                 dot.node(str(id(var)), str(type(var).__name__))
             seen.add(var)
-            if hasattr(var, 'previous_functions'):
-                for u in var.previous_functions:
+            if hasattr(var, 'next_functions'):
+                for u in var.next_functions:
                     dot.edge(str(id(u[0])), str(id(var)))
                     add_nodes(u[0])
-    add_nodes(root.creator)
+    add_nodes(root.grad_fn)
     return dot
 
 
